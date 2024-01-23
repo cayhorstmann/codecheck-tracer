@@ -2105,59 +2105,50 @@ window.addEventListener('load', () => {
                 };
             },
 
-            ask: (val, prompt, secondary) => {
-                let value = Array.isArray(val) ? val : [val];
-                let tests = [
-                    [...value].map((test) => test === undefined || horstmann_common.isScalar(test)),
-                    [...value].map((test) => test instanceof Null),
-                    [...value].map((test) => test instanceof Addr),
-                    [...value].map((test) => test instanceof Ref),
-                    [...value].map((test) => test instanceof GraphEdge),
-                    [...value].map((test) => test instanceof Node && test.$toplevel),
-                ];
-                if (tests[0].includes(true)) {
+            ask: (value, prompt, secondary) => {
+                if (value === undefined || horstmann_common.isScalar(value)) {
                     return {
                         type: 'input',
                         select: true,
                         value,
                         prompt: prompt ?? _('od_enter_value'),
                         secondary,
-                        description: `The new value is ${value[0]}`,
+                        description: `The new value is ${value}`,
                     };
-                } else if (!tests[1].includes(false)) {
+                } else if (value instanceof Null) {
                     tabindex(arena, 'selectable-field', 0);
                     return {
                         type: 'select',
-                        elements: [value[0].$valueContainer],
+                        elements: [value.$valueContainer],
                         value,
                         prompt: prompt ?? 'Select the location of the null pointer',
                         secondary,
                         done: () => tabindex(arena, 'selectable-field', -1), // ???
                         description: `TODO`,
                     };
-                } else if (!tests[2].includes(false)) {
+                } else if (value instanceof Addr) {
                     tabindex(arena, 'editable', 0);
                     return {
                         type: 'select',
-                        elements: [value[0].deref().$valueContainer],
+                        elements: [value.deref().$valueContainer],
                         value,
                         prompt: prompt ?? 'Select the pointer target.',
                         secondary,
                         done: () => tabindex(arena, 'editable', -1),
                         description: `TODO`,
                     };
-                } else if (!tests[3].includes(false)) {
+                } else if (value instanceof Ref) {
                     tabindex(arena, 'selectable-node', 0);
                     return {
                         type: 'select',
-                        elements: [value[0].$valueOf().$element],
+                        elements: [value.$valueOf().$element],
                         value,
                         prompt: prompt ?? 'Select the target.',
                         secondary,
                         done: () => tabindex(arena, 'selectable-node', -1),
-                        description: `Selecting ${value[0].$valueOf().$name}`,
+                        description: `Selecting ${value.$valueOf().$name}`,
                     };
-                } else if (!tests[4].includes(false)) {
+                } else if (value instanceof GraphEdge) {
                     tabindex(arena, 'selectable-edge', 0);
                     return {
                         type: 'select',
@@ -2168,20 +2159,19 @@ window.addEventListener('load', () => {
                         done: () => tabindex(arena, 'selectable-edge', -1),
                         description: `Selecting ${value.$name}`,
                     };
-                } else if (!tests[5].includes(false)) {
-                    console.log(value[0].$element);
+                } else if (value instanceof Node && value.$toplevel) {
                     tabindex(arena, 'selectable-node', 0);
                     return {
                         type: 'select',
-                        elements: [value[0].$element],
+                        elements: [value.$element],
                         value,
                         prompt: prompt ?? 'Select the target.',
                         secondary,
                         done: () => tabindex(arena, 'selectable-node', -1),
-                        description: `Selecting ${value[0].$name}`,
+                        description: `Selecting ${value.$name}`,
                     };
                 } else {
-                    alert(`Cannot ask for ${value[0]}`);
+                    alert(`Cannot ask for ${value}`);
                     debugger;
                     return undefined;
                 }
