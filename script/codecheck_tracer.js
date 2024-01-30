@@ -1467,16 +1467,16 @@ class GraphBase {
         sim.add(x, y, v)
       }
       for (const e of this.$edges) {
-        if (sim.silent) return
         if (!('$sim' in e)) 
           e.$attach?.(sim)
         
         let from = e.$from.$element
         let to = e.$to.$element
         sim.addConnector(from, to, (f, tb) => {
+          console.log('draw', e)
           e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
           e.$svg.style.pointerEvents = 'auto' 
-          sim.selectable(e.$svg, 'edge')
+          sim.selectable(e.$svg, 'edge', e)
           return e.$svg
         }, e.$element)
       }
@@ -1495,7 +1495,7 @@ export class Graph extends GraphBase {
   // TODO Unify by expressing in terms of other?
   findEdge(v, w) {
     for (const e of v.$outgoing) {
-      if (e.$to === w || e.$from == w) return e
+      if (e.$to === w || e.$from === w) return e
     }
     return undefined
   }
@@ -1833,7 +1833,7 @@ window.addEventListener('load', () => {
       arena.parentNode.style.height = height + 'em'
     }
 
-    const selected = (element) => {
+    const selected = (element, value) => { // value can be undefined
       if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
       // Ignore selections of the wrong type
       if (element.classList.contains('selectable-node')
@@ -1845,7 +1845,8 @@ window.addEventListener('load', () => {
       
       if (currentStepStarted) return
       currentStepStarted = true
-      if (currentStep.elements.indexOf(element) >= 0) {
+      const good = currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0 || currentStep.elements === undefined && currentStep.value === value
+      if (good) {
         // Remove old selection so that it doesn't interfere with
         // hc-good marking of new selection
         let items = arena.getElementsByClassName('hc-selected')
@@ -2075,6 +2076,7 @@ window.addEventListener('load', () => {
         }
       },
 
+      // TODO: Eliminate elements and always pass value to selected
       ask: (value, prompt, secondary) => {
         if (value === undefined || horstmann_common.isScalar(value)) {
           return {
@@ -2119,10 +2121,11 @@ window.addEventListener('load', () => {
             description: `Selecting ${value.$valueOf().$name}`
           }
         } else if (value instanceof GraphEdge) {
+          console.log('ask GraphEdge', value)
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
-            elements: [value.$element, value.$svg],
+            elements: undefined, // Can't use SVG because they move
             value,
             prompt: prompt ?? 'Select the edge.',
             secondary,
@@ -2394,10 +2397,10 @@ window.addEventListener('load', () => {
         resize()
       },
 
-      selectable: (element, type) => {
+      selectable: (element, type, value) => { // value can be undefined
         element.classList.add('selectable-' + type)
         element.addEventListener('click', e => {
-          selected(element)
+          selected(element, value)
         })
         element.addEventListener('dblclick', e => {
           e.preventDefault()
@@ -2407,7 +2410,7 @@ window.addEventListener('load', () => {
           if (e.keyCode === 32) {
             e.stopPropagation();
             e.preventDefault();
-            selected(element)
+            selected(element, value)
           }
         })
       },
@@ -2524,7 +2527,7 @@ window.addEventListener('load', () => {
       Does the current step non-interactively (in play, show next steps)
     */
     const doStep = () => {
-      if (currentStep.type === 'select') {
+      if (currentStep.type === 'select' && currentStep.elements !== undefined) {
         let element = currentStep.elements[0]
         element.classList.add('hc-good')
         setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
