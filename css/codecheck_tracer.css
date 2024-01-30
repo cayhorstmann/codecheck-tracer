@@ -6,10 +6,12 @@
   --greenish-sequence: #80d4ce;
   --purplish-heap: #DF8489;
   --orangish-embedded: #FBBC86;
-  --grayish-linenumber: #444;  
+  --grayish-linenumber: #444;
 }
 
-html, body { /* TODO Edgcomb 2022-08-01 */
+html,
+body {
+  /* TODO Edgcomb 2022-08-01 */
   height: auto;
 }
 
@@ -17,58 +19,74 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   height: auto;
 }
 
-.codecheck_tracer .hc-code, .codecheck_tracer pre, .codecheck_tracer code,
-.codecheck_tracer .index, .codecheck_tracer .title, .codecheck_tracer .name,
-.codecheck_tracer .terminal, .codecheck_tracer .codelines {
-    font-family:"DejaVuSansMonoSemiCondensed", "Courier New", monospace;
-    font-size: 86.46297%; /* (472/1000) / (1118/2048) */
-    word-wrap: break-word; 
+.codecheck_tracer .hc-code,
+.codecheck_tracer pre,
+.codecheck_tracer code,
+.codecheck_tracer .index,
+.codecheck_tracer .title,
+.codecheck_tracer .name,
+.codecheck_tracer .terminal,
+.codecheck_tracer .codelines {
+  font-family: "DejaVuSansMonoSemiCondensed", "Courier New", monospace;
+  font-size: 86.46297%;
+  /* (472/1000) / (1118/2048) */
+  word-wrap: break-word;
 }
 
-.codecheck_tracer .vertex .title, .codecheck_tracer .vertex .name {
+.codecheck_tracer .vertex .title,
+.codecheck_tracer .vertex .name {
   font-family: "STIXTwoText", serif;
   font-style: italic;
 }
 
-.codecheck_tracer .codelines.pseudo, .codecheck_tracer .name.pseudo, {
-    font-family:"Kalam", "Comic Sans MS", cursive;
-    font-size: 92.1875%; /* (472/1000) / (512/1000) */
-    letter-spacing: -0.05em;
+.codecheck_tracer .codelines.pseudo,
+.codecheck_tracer .name.pseudo,
+{
+font-family: "Kalam", "Comic Sans MS", cursive;
+font-size: 92.1875%;
+/* (472/1000) / (512/1000) */
+letter-spacing: -0.05em;
 }
 
 .codecheck_tracer .arenaContainer {
-    /* width: 100%; TODO Edgcomb 2022-08-01 */
-    margin-top: 2em; /* 2022-12-19 */
-    cursor: pointer;
-    user-select: none;
-    -moz-user-select: none;      /* Firefox */
-    -webkit-touch-callout: none; /* iOS Safari */
-    -webkit-user-select: none;   /* Safari */
-    -ms-user-select: none;       /* Internet Explorer/Edge */    
+  /* width: 100%; TODO Edgcomb 2022-08-01 */
+  margin-top: 2em;
+  /* 2022-12-19 */
+  cursor: pointer;
+  user-select: none;
+  -moz-user-select: none;
+  /* Firefox */
+  -webkit-touch-callout: none;
+  /* iOS Safari */
+  -webkit-user-select: none;
+  /* Safari */
+  -ms-user-select: none;
+  /* Internet Explorer/Edge */
 }
 
 .codecheck_tracer .arenaContainer table {
-    font-size: inherit; /* Otherwise a browser style sheet rule sets this, which interferes with zooming */
+  font-size: inherit;
+  /* Otherwise a browser style sheet rule sets this, which interferes with zooming */
 }
 
-.codecheck_tracer .arenaContainer > :first-child {
-    width: 100%;
+.codecheck_tracer .arenaContainer> :first-child {
+  width: 100%;
 }
 
 .codecheck_tracer .codelines {
-   display: inline-block;
-   vertical-align: top;
-   counter-reset: line;
+  display: inline-block;
+  vertical-align: top;
+  counter-reset: line;
 }
 
-.codecheck_tracer .codelines > span {
-    /* margin-left: 2em; 2022-12-19 */
-    display: block;
-    white-space: pre;
-    counter-increment: line;
+.codecheck_tracer .codelines>span {
+  /* margin-left: 2em; 2022-12-19 */
+  display: block;
+  white-space: pre;
+  counter-increment: line;
 }
 
-.codecheck_tracer .codelines > span:before {
+.codecheck_tracer .codelines>span:before {
   content: counter(line);
   display: inline-block;
   padding-right: 2em;
@@ -79,12 +97,17 @@ html, body { /* TODO Edgcomb 2022-08-01 */
 }
 
 
-.codecheck_tracer .codelines > span:focus, .codecheck_tracer th:focus, .codecheck_tracer span:focus, .codecheck_tracer table:focus, .horstmann_rearrange .tile:focus, .multiple-choice > li:focus {
-    /* border: solid 0.2em #c0c0c0; */
+.codecheck_tracer .codelines>span:focus,
+.codecheck_tracer th:focus,
+.codecheck_tracer span:focus,
+.codecheck_tracer table:focus,
+.horstmann_rearrange .tile:focus,
+.multiple-choice>li:focus {
+  /* border: solid 0.2em #c0c0c0; */
 }
 
 .codecheck_tracer .codelines .hc-selected {
-    background: var(--yellowish-selected);
+  background: var(--yellowish-selected);
 }
 
 .codecheck_tracer .codelines .hc-good {
@@ -96,8 +119,10 @@ html, body { /* TODO Edgcomb 2022-08-01 */
 }
 
 /* To work around a bug in Safari. Unfortunately, the workaround doesn't work either */
-.codecheck_tracer .selected-line:focus::before, .codecheck_tracer .code-table > pre > .hc-good:focus::before, .codecheck_tracer .code-table > pre > .hc-bad:focus::before {
-    outline: none; 
+.codecheck_tracer .selected-line:focus::before,
+.codecheck_tracer .code-table>pre>.hc-good:focus::before,
+.codecheck_tracer .code-table>pre>.hc-bad:focus::before {
+  outline: none;
 }
 
 /* Objects, arrays, frames */
@@ -122,17 +147,17 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   margin-bottom: 0.1em;
   padding-left: 0.75em;
   justify-self: end;
-  display: flex; 
+  display: flex;
   align-items: center;
   min-height: 1.5em;
 }
 
-.codecheck_tracer .array > .name {
+.codecheck_tracer .array>.name {
   font-size: 70%;
 }
 
-.codecheck_tracer .frame > .name:after,
-.codecheck_tracer .object > .name:after {
+.codecheck_tracer .frame>.name:after,
+.codecheck_tracer .object>.name:after {
   padding-left: 0.25em;
   content: "=";
 }
@@ -148,7 +173,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   align-items: center;
 }
 
-.codecheck_tracer .value > span {
+.codecheck_tracer .value>span {
   display: inline-block;
   background: white;
   padding: 0.1em;
@@ -159,7 +184,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   white-space: nowrap;
 }
 
-.codecheck_tracer .vertex .value > span {
+.codecheck_tracer .vertex .value>span {
   min-width: 2.5em;
 }
 
@@ -179,7 +204,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   white-space: nowrap;
 }
 
-.codecheck_tracer .vertex > .title {
+.codecheck_tracer .vertex>.title {
   text-decoration: none;
   font-size: 120%;
 }
@@ -197,24 +222,25 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   margin: 0.1em;
 }
 
-.codecheck_tracer .seq > tr > td, .codecheck_tracer tr.seq > td {
-    text-align: center;
-    margin: 0.1em;
-    min-width: 1.5em;
-    padding-top: 0.25em;
-    padding-bottom: 0.25em;
-    border-style: none;
+.codecheck_tracer .seq>tr>td,
+.codecheck_tracer tr.seq>td {
+  text-align: center;
+  margin: 0.1em;
+  min-width: 1.5em;
+  padding-top: 0.25em;
+  padding-bottom: 0.25em;
+  border-style: none;
 }
 
-.codecheck_tracer tr.index > td {
+.codecheck_tracer tr.index>td {
   text-align: center;
 }
 
-.codecheck_tracer tr > td.index {
+.codecheck_tracer tr>td.index {
   text-align: right;
 }
 
-.codecheck_tracer tr.index > td:empty {
+.codecheck_tracer tr.index>td:empty {
   height: 0;
   padding-top: 0;
   padding-bottom: 0;
@@ -237,10 +263,11 @@ html, body { /* TODO Edgcomb 2022-08-01 */
 .codecheck_tracer .treenode {
   display: grid;
   grid-auto-flow: row;
-  grid-template-columns: repeat(2, 1fr); /* TODO: Need to adapt when more than two children */
+  grid-template-columns: repeat(2, 1fr);
+  /* TODO: Need to adapt when more than two children */
 }
 
-.codecheck_tracer .treenode > div {
+.codecheck_tracer .treenode>div {
   display: inline-block;
   border: solid thin white;
   min-height: 1em;
@@ -248,7 +275,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   text-align: center;
 }
 
-.codecheck_tracer .treenode > div:first-child {
+.codecheck_tracer .treenode>div:first-child {
   grid-row: 1;
   grid-column: 1/-1;
   border: solid thin white;
@@ -256,7 +283,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   min-height: 1.5em;
 }
 
-.codecheck_tracer .treenode > div:first-child > span {
+.codecheck_tracer .treenode>div:first-child>span {
   display: inline-block;
   padding: 0.2em;
 }
@@ -274,16 +301,18 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   border: medium solid white;
 }
 
-.codecheck_tracer .frame > .name,
-.codecheck_tracer .frame > .value {
+.codecheck_tracer .frame>.name,
+.codecheck_tracer .frame>.value {
   background: var(--yellowish-variable);
 }
 
-.codecheck_tracer .seq > tr > td, .codecheck_tracer tr.seq > td {
-    background-color: var(--greenish-sequence); 
+.codecheck_tracer .seq>tr>td,
+.codecheck_tracer tr.seq>td {
+  background-color: var(--greenish-sequence);
 }
 
-.codecheck_tracer * > tr.index > td, .codecheck_tracer tr > td.index {
+.codecheck_tracer *>tr.index>td,
+.codecheck_tracer tr>td.index {
   background-color: white;
 }
 
@@ -293,17 +322,17 @@ html, body { /* TODO Edgcomb 2022-08-01 */
 .codecheck_tracer .array,
 .codecheck_tracer .node {
   border-top-left-radius: 0.75em;
-  border-bottom-left-radius: 0.75em;                  
+  border-bottom-left-radius: 0.75em;
   border-top-right-radius: 0.75em;
   border-bottom-right-radius: 0.75em;
 }
 
-.codecheck_tracer .frame > .name {
+.codecheck_tracer .frame>.name {
   border-top-left-radius: 0.75em;
-  border-bottom-left-radius: 0.75em;         
+  border-bottom-left-radius: 0.75em;
 }
 
-.codecheck_tracer .frame > .value {
+.codecheck_tracer .frame>.value {
   border-top-right-radius: 0.75em;
   border-bottom-right-radius: 0.75em;
 }
@@ -375,11 +404,11 @@ html, body { /* TODO Edgcomb 2022-08-01 */
   background-color: var(--greenish-success);
 }
 
-.codecheck_tracer .value > span.hc-bad {
+.codecheck_tracer .value>span.hc-bad {
   /* background-color: #B4939D; */
   background-color: var(--reddish-error);
 }
 
-.codecheck_tracer .value > span.hc-good {
+.codecheck_tracer .value>span.hc-good {
   background-color: var(--greenish-success);
 }

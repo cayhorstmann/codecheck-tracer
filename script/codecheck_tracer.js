@@ -1331,30 +1331,6 @@ class GraphBase {
         this.$edges.push(e);
         this.$edges.sort(GraphEdge.$compare);
 
-<<<<<<< HEAD
-      let maxvertexwidth = 1 // TODO
-      let maxvertexheight = 1
-      
-      for (const v of this.$verts) {
-        let x = this.$x + (this.$width - maxvertexwidth)  * (v.$pos.x - xmin) / (xmax - xmin)
-        let y = this.$y + (this.$height - maxvertexheight) * (v.$pos.y - ymin) / (ymax - ymin)
-        sim.add(x, y, v)
-      }
-      for (const e of this.$edges) {
-        if (!('$sim' in e)) 
-          e.$attach?.(sim)
-        
-        let from = e.$from.$element
-        let to = e.$to.$element
-        sim.addConnector(from, to, (f, tb) => {
-          console.log('draw', e)
-          e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
-          e.$svg.style.pointerEvents = 'auto' 
-          sim.selectable(e.$svg, 'edge', e)
-          return e.$svg
-        }, e.$element)
-      }
-=======
         v.$outgoing.push(e);
         v.$outgoing.sort(GraphEdge.$compare);
 
@@ -1367,7 +1343,6 @@ class GraphBase {
         }
         // TODO compare undirected?
         return e;
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
     }
     adjacent(v) {
         return v.$outgoing.map((e) => e.$to);
@@ -1509,15 +1484,6 @@ class GraphBase {
 }
 
 export class Graph extends GraphBase {
-<<<<<<< HEAD
-  constructor() {
-    super(false)
-  }
-  // TODO Unify by expressing in terms of other?
-  findEdge(v, w) {
-    for (const e of v.$outgoing) {
-      if (e.$to === w || e.$from === w) return e
-=======
     constructor() {
         super(false);
     }
@@ -1530,7 +1496,6 @@ export class Graph extends GraphBase {
     }
     other(e, v) {
         return e.$from === v ? e.$to : e.$from;
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
     }
 }
 
@@ -1872,27 +1837,6 @@ window.addEventListener('load', () => {
             connectorArena.style.width = width + 'em';
             connectorArena.style.height = height + 'em';
 
-<<<<<<< HEAD
-    const selected = (element, value) => { // value can be undefined
-      if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
-      // Ignore selections of the wrong type
-      if (element.classList.contains('selectable-node')
-          && !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
-      if (element.classList.contains('selectable-field')
-          && !(currentStep.value instanceof Null || currentStep.value instanceof Node && !currentStep.value.$toplevel)) return
-      if (element.classList.contains('selectable-edge')
-          && !(currentStep.value instanceof GraphEdge)) return
-      
-      if (currentStepStarted) return
-      currentStepStarted = true
-      const good = currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0 || currentStep.elements === undefined && currentStep.value === value
-      if (good) {
-        // Remove old selection so that it doesn't interfere with
-        // hc-good marking of new selection
-        let items = arena.getElementsByClassName('hc-selected')
-        for (let i = items.length - 1; i >= 0; i--) {
-          items[i].classList.remove('hc-selected')
-=======
             arena.style.width = width + 'em';
             arena.style.height = height + 'em';
             arena.parentNode.style.width = width + 'em';
@@ -2019,7 +1963,6 @@ window.addEventListener('load', () => {
                 commonUI.instruction(null, { secondary: _('od_arrow_start') });
                 stepCompleted(false);
             }
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
         }
 
         const stepCompleted = (success, actual) => {
@@ -2234,120 +2177,7 @@ window.addEventListener('load', () => {
                 }
             },
 
-<<<<<<< HEAD
-      pause: (prompt, secondary) => {
-        return {
-          type: 'pause',
-          prompt,
-          secondary
-        }
-      },
-
-      start: (state, prompt, secondary) => {
-        return {
-          type: 'start',
-          state,
-          prompt,
-          secondary
-        }
-      },
-
-      next: (prompt, secondary) => {
-        return {
-          type: 'next',
-          prompt,
-          secondary
-        }
-      },
-
-      click: (label, prompt, secondary) => {
-        return {
-          type: 'click',
-          prompt: prompt ?? _('od_click_button'),
-          secondary,
-          value: label,
-          description: `Next step: ${label}`
-        }
-      },
-
-      // TODO: Eliminate elements and always pass value to selected
-      ask: (value, prompt, secondary) => {
-        if (value === undefined || horstmann_common.isScalar(value)) {
-          return {
-            type: 'input',
-            select: true,
-            value,
-            prompt: prompt ?? _('od_enter_value'),
-            secondary,
-            description: `The new value is ${value}`
-          }
-        } else if (value instanceof Null) {
-          tabindex(arena, 'selectable-field', 0)
-          return {
-            type: 'select',
-            elements: [value.$valueContainer],
-            value,
-            prompt: prompt ?? 'Select the location of the null pointer',
-            secondary,
-            done: () => tabindex(arena, 'selectable-field', -1), // ???
-            description: `TODO`
-          }
-        } else if (value instanceof Addr) {
-          tabindex(arena, 'editable', 0)
-          return {
-            type: 'select',
-            elements: [value.deref().$valueContainer],
-            value,
-            prompt: prompt ?? 'Select the pointer target.',
-            secondary,
-            done: () => tabindex(arena, 'editable', -1),
-            description: `TODO`
-          }
-        } else if (value instanceof Ref) {
-          tabindex(arena, 'selectable-node', 0)
-          return {
-            type: 'select',
-            elements: [value.$valueOf().$element],
-            value,
-            prompt: prompt ?? 'Select the target.',
-            secondary,
-            done: () => tabindex(arena, 'selectable-node', -1),
-            description: `Selecting ${value.$valueOf().$name}`
-          }
-        } else if (value instanceof GraphEdge) {
-          console.log('ask GraphEdge', value)
-          tabindex(arena, 'selectable-edge', 0)
-          return {
-            type: 'select',
-            elements: undefined, // Can't use SVG because they move
-            value,
-            prompt: prompt ?? 'Select the edge.',
-            secondary,
-            done: () => tabindex(arena, 'selectable-edge', -1),
-            description: `Selecting ${value.$name}`
-          }
-        } else if (value instanceof Node && value.$toplevel) {
-          tabindex(arena, 'selectable-node', 0)
-          return {
-            type: 'select',
-            elements: [value.$element],
-            value,
-            prompt: prompt ?? 'Select the target.',
-            secondary,
-            done: () => tabindex(arena, 'selectable-node', -1),
-            description: `Selecting ${value.$name}`
-          }
-        } else {
-          alert(`Cannot ask for ${value}`)
-          debugger
-          return undefined
-        }
-      },
-
-      /**
-=======
             /**
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
          @param lhs a path
          @param rhs the value to be set: An Addr, heap node, or scalar (string, number, boolean)
          @param prompt the optional prompt
@@ -2609,25 +2439,6 @@ window.addEventListener('load', () => {
                 resize();
             },
 
-<<<<<<< HEAD
-      selectable: (element, type, value) => { // value can be undefined
-        element.classList.add('selectable-' + type)
-        element.addEventListener('click', e => {
-          selected(element, value)
-        })
-        element.addEventListener('dblclick', e => {
-          e.preventDefault()
-        })
-        element.addEventListener('keydown', e => {
-          if (currentStep === undefined || currentStep.type !== 'select') return
-          if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
-            selected(element, value)
-          }
-        })
-      },
-=======
             selectable: (element, type) => {
                 element.classList.add('selectable-' + type);
                 element.addEventListener('click', (e) => {
@@ -2645,7 +2456,6 @@ window.addEventListener('load', () => {
                     }
                 });
             },
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
 
             editable: (element) => {
                 element.classList.add('editable');
@@ -2758,19 +2568,6 @@ window.addEventListener('load', () => {
         /**
       Does the current step non-interactively (in play, show next steps)
     */
-<<<<<<< HEAD
-    const doStep = () => {
-      if (currentStep.type === 'select' && currentStep.elements !== undefined) {
-        let element = currentStep.elements[0]
-        element.classList.add('hc-good')
-        setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
-      }
-      if ('done' in currentStep)
-        currentStep.done()
-      tracerElement.state.lastStep = currentStepIndex
-      return tracerElement.state
-    }
-=======
         const doStep = () => {
             if (currentStep.type === 'select') {
                 let element = currentStep.elements[0];
@@ -2783,7 +2580,6 @@ window.addEventListener('load', () => {
             tracerElement.state.lastStep = currentStepIndex;
             return tracerElement.state;
         };
->>>>>>> 496471718adbc746f2e77988e2260b8ddf7c4fdc
 
         function repaintRubberband(to) {
             const connectorArena = arena.nextSibling;
