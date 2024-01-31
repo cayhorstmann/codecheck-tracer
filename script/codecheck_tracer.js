@@ -1646,11 +1646,12 @@ export class BinaryTreeNode extends Node {
     sim.connectionTarget(this.$element)
 
     sim.add(0, 0, this)
-
-    this.value = this.value
-    this.color = this.color
-    this.left = this.left
-    this.right = this.right
+    // Now set the values again so that they can be shown
+    const { value, color, left, right } = this
+    this.value = value
+    this.color = color
+    this.left = left
+    this.right = right
   }
 
   layout(sim, gridX, gridY) {
