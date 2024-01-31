@@ -55,13 +55,15 @@ import { horstmann_common, _ } from './horstmann_common.mjs'
 
 const setup = []
 
-export const addExercise = (algo, config) => { setup.push({ algo, config }) }
+export const addExercise = (algo, config) => {
+  setup.push({ algo, config })
+}
 
 /*
   Wraps a primitive value in an object or clones an object, so that
   path properties and methods can be attached.
 */
-const wrap = value => {
+const wrap = (value) => {
   if (value === undefined) {
     return new String('')
   } else if (horstmann_common.isString(value)) {
@@ -70,7 +72,7 @@ const wrap = value => {
     return new Number(value)
   } else if (horstmann_common.isBoolean(value)) {
     return new Boolean(value)
-  } else if (value === null || typeof value === 'object' && value instanceof Null) {
+  } else if (value === null || (typeof value === 'object' && value instanceof Null)) {
     return new Null()
   } else if (typeof value !== 'object') {
     alert(`Path cannot have value ${value}`)
@@ -80,17 +82,17 @@ const wrap = value => {
     return new Ref(value.$valueOf())
   } else if (value instanceof Addr) {
     return new Addr(value.deref())
-  } else if (value.$toplevel) { 
+  } else if (value.$toplevel) {
     return new Ref(value)
   } else {
     return value // TODO!!!
     // return structuredClone(value)
-  }  
+  }
 }
 
 let counters = {}
 
-const counter = key => {
+const counter = (key) => {
   counters[key] = key in counters ? counters[key] + 1 : 1
   return counters[key]
 }
@@ -104,30 +106,25 @@ const tabindex = (parent, clazz, value) => {
 }
 
 const setAriaDescription = (elem, prefix, key) => {
-  if (!elem.getAttribute('aria-label'))
-    elem.setAttribute('aria-label', prefix + ' ' + counter(key))
+  if (!elem.getAttribute('aria-label')) elem.setAttribute('aria-label', prefix + ' ' + counter(key))
 }
 
 const setTextContent = (elem, text, ariaDescription) => {
   const NARROW_NO_BREAK_SPACE = '\u{202F}'
-  
+
   if (text === undefined || text.length === 0) text = NARROW_NO_BREAK_SPACE
   else text = '' + text
-  
+
   if (elem.classList.contains('dropHistory')) {
     elem.textContent = text
-    if (ariaDescription !== undefined) 
-      elem.setAttribute('aria-label', ariaDescription)
-    else
-      elem.removeAttribute('aria-label')    
+    if (ariaDescription !== undefined) elem.setAttribute('aria-label', ariaDescription)
+    else elem.removeAttribute('aria-label')
   } else {
     const newContent = document.createElement('span')
     newContent.textContent = text
-    if (ariaDescription !== undefined) 
-      newContent.setAttribute('aria-label', ariaDescription)
+    if (ariaDescription !== undefined) newContent.setAttribute('aria-label', ariaDescription)
     if (elem.children.length > 0) {
-      if (elem.lastChild.textContent === NARROW_NO_BREAK_SPACE)
-        elem.lastChild.remove()
+      if (elem.lastChild.textContent === NARROW_NO_BREAK_SPACE) elem.lastChild.remove()
       else {
         elem.lastChild.classList.add('history')
         elem.lastChild.setAttribute('aria-label', 'previous value')
@@ -144,11 +141,11 @@ const GRIDY_TO_EM = 2.75
 /*
   Gets the bounds of a DOM element in the arena in em
 */
-const getBounds = e => {
+const getBounds = (e) => {
   let outer = e.closest('.arenaContainer')
-  const pxToEm = x => {
+  const pxToEm = (x) => {
     const pxPerEm = parseFloat(window.getComputedStyle(outer).fontSize)
-    return x / pxPerEm / horstmann_common.getScaleFactor();
+    return x / pxPerEm / horstmann_common.getScaleFactor()
   }
   if (!outer) {
     outer = document.getElementsByClassName('arenaContainer')[0]
@@ -164,10 +161,9 @@ const getBounds = e => {
     x: pxToEm(innerRect.left - outerRect.left),
     y: pxToEm(innerRect.top - outerRect.top),
     width: pxToEm(e.scrollWidth), // client width is clipped to parent
-    height: pxToEm(e.scrollHeight)
+    height: pxToEm(e.scrollHeight),
   }
 }
-
 
 // --------------------------------------------------------------------
 
@@ -177,7 +173,7 @@ const drawPointer = (from, toBounds) => {
   const minSWidth = 0.8
   const arrowWidth = 0.4
   const attachmentHeight = 0.6
-  const attachmentWidth = 0.40
+  const attachmentWidth = 0.4
   const maxCWidth = 3
   const minDelta = 2
   const maxDelta = 6
@@ -194,12 +190,11 @@ const drawPointer = (from, toBounds) => {
 
   let attachment = 1
 
-  let attachmentY = forward ? attachmentHeight :
-      attachmentHeight * 3 / 2 // So that forward/backwards arrows don't cross
+  let attachmentY = forward ? attachmentHeight : (attachmentHeight * 3) / 2 // So that forward/backwards arrows don't cross
   // For narrow height objects, add all arrows in the middle
   if (toBounds.height < 2 * attachmentY) {
-    attachmentY = toBounds.height / 2;
-    attachment = 1;
+    attachmentY = toBounds.height / 2
+    attachment = 1
   }
 
   let y2 = toBounds.y + attachmentY * attachment
@@ -213,23 +208,34 @@ const drawPointer = (from, toBounds) => {
     let cp2x = x2 - Math.abs(y2 - y1) * 0.5
     let cp2y = y2
     curve = `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 + arrowWidth} ${y2}`
-    arrow = `M ${x2 + 2 * arrowWidth} ${y2} L ${x2 + arrowWidth} ${y2 - arrowWidth / 2} L ${x2 + arrowWidth} ${y2 + arrowWidth / 2} Z`
-  } else if (toBounds.x + toBounds.width > fromBounds.x || y2 < outerFromBounds.y || y2 > outerFromBounds.y + outerFromBounds.height) {
+    arrow = `M ${x2 + 2 * arrowWidth} ${y2} L ${x2 + arrowWidth} ${y2 - arrowWidth / 2} L ${
+      x2 + arrowWidth
+    } ${y2 + arrowWidth / 2} Z`
+  } else if (
+    toBounds.x + toBounds.width > fromBounds.x ||
+    y2 < outerFromBounds.y ||
+    y2 > outerFromBounds.y + outerFromBounds.height
+  ) {
     // Reverse C-shaped
     let x2 = toBounds.x + toBounds.width + 2 * arrowWidth
     let xmax = Math.max(x1outer, x2)
     let xmid = xmax + Math.min(maxCWidth, Math.abs(y1 - y2) * 0.25)
     let ymid = (y1 + y2) / 2
-    curve = `L ${xmax} ${y1} Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y2}, ${xmax} ${y2} L ${x2 - arrowWidth} ${y2}`
-    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
+    curve = `L ${xmax} ${y1} Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y2}, ${xmax} ${y2} L ${
+      x2 - arrowWidth
+    } ${y2}`
+    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${
+      x2 - arrowWidth
+    } ${y2 + arrowWidth / 2} Z`
   } else {
     // Reverse C to start of outerFromBounds, then Bézier
     let outerYmid = outerFromBounds.y + outerFromBounds.height / 2
     let delta = minDelta + (maxDelta - minDelta) * Math.abs(y1 / outerYmid - 1)
     let x3 = outerFromBounds.x - delta
-    let y3 = y1 > outerFromBounds.y + outerFromBounds.height / 2 ?
-        outerFromBounds.y + outerFromBounds.height + delta :
-        outerFromBounds.y - delta
+    let y3 =
+      y1 > outerFromBounds.y + outerFromBounds.height / 2
+        ? outerFromBounds.y + outerFromBounds.height + delta
+        : outerFromBounds.y - delta
     let xmid = x1outer + Math.min(maxCWidth, Math.abs(y1 - y3) * 0.25)
     let ymid = (y1 + y3) / 2
 
@@ -239,8 +245,12 @@ const drawPointer = (from, toBounds) => {
     let cp1y = y3
     let cp2x = x2 + Math.abs(y2 - y3) * 0.5
     let cp2y = y2
-    curve = `Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y3}, ${x1outer} ${y3} L ${x3} ${y3} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 - arrowWidth} ${y2}`
-    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
+    curve = `Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y3}, ${x1outer} ${y3} L ${x3} ${y3} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${
+      x2 - arrowWidth
+    } ${y2}`
+    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${
+      x2 - arrowWidth
+    } ${y2 + arrowWidth / 2} Z`
   }
 
   let tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -260,22 +270,22 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
       // intersects at left or right boundary
       if (dx > 0) {
         x = bounds.x + bounds.width
-        y += (bounds.width / 2) * dy / dx
+        y += ((bounds.width / 2) * dy) / dx
       } else {
         x = bounds.x
-        y -= (bounds.width / 2) * dy / dx
+        y -= ((bounds.width / 2) * dy) / dx
       }
     } else if (dy != 0) {
       // intersects at top or bottom
       if (dy > 0) {
-        x += (bounds.height / 2) * dx / dy
+        x += ((bounds.height / 2) * dx) / dy
         y = bounds.y + bounds.height
       } else {
-        x -= (bounds.height / 2) * dx / dy;
-        y = bounds.y;
+        x -= ((bounds.height / 2) * dx) / dy
+        y = bounds.y
       }
     }
-    return { x, y };
+    return { x, y }
   }
 
   // Center points
@@ -294,19 +304,19 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
   y1 = from.y
   x2 = to.x
   y2 = to.y
-  
+
   let tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 
   if (directed) {
-  // Arrow tip endpoints
-    const angle = Math.atan2(dy, dx);
+    // Arrow tip endpoints
+    const angle = Math.atan2(dy, dx)
     const arrowWidth = 0.6
     const arrowAngle = Math.PI / 6
 
-    const x3 = x2 - arrowWidth * Math.cos(angle + arrowAngle);
-    const y3 = y2 - arrowWidth * Math.sin(angle + arrowAngle);
-    const x4 = x2 - arrowWidth * Math.cos(angle - arrowAngle);
-    const y4 = y2 - arrowWidth * Math.sin(angle - arrowAngle);
+    const x3 = x2 - arrowWidth * Math.cos(angle + arrowAngle)
+    const y3 = y2 - arrowWidth * Math.sin(angle + arrowAngle)
+    const x4 = x2 - arrowWidth * Math.cos(angle - arrowAngle)
+    const y4 = y2 - arrowWidth * Math.sin(angle - arrowAngle)
     const x5 = (x3 + x4) / 2
     const y5 = (y3 + y4) / 2
 
@@ -315,7 +325,7 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
 
     tempDiv.innerHTML = `<g><path d="${line}" stroke-width="0.2"/><path d="${arrow}"/></g>`
   } else {
-    const line = `M ${x1} ${y1} L ${x2} ${y2}`    
+    const line = `M ${x1} ${y1} L ${x2} ${y2}`
     tempDiv.innerHTML = `<g><path d="${line}" stroke-width="0.15"/></g>`
   }
   let paths = tempDiv.firstChild.children
@@ -340,8 +350,7 @@ export class Buttons {
 
   $attach(sim) {
     this.$sim = sim
-    for (const child of this.$element.children)
-      sim.selectable(child, 'button')
+    for (const child of this.$element.children) sim.selectable(child, 'button')
   }
 
   add(label, action) {
@@ -358,17 +367,16 @@ export class Buttons {
     tabindex(this.$element, 'selectable-button', 0)
     return {
       type: 'select',
-      prompt: _('od_click_button'), 
-      elements: [...this.$element.children].filter(b => b.innerHTML === label),
+      prompt: _('od_click_button'),
+      elements: [...this.$element.children].filter((b) => b.innerHTML === label),
       done: () => {
         tabindex(this.$element, 'selectable-button', -1)
         this.actions[label]()
       },
-      description: `Next step: ${label}`
+      description: `Next step: ${label}`,
     }
   }
 }
-
 
 // --------------------------------------------------------------------
 
@@ -380,19 +388,15 @@ export class Code {
     this.$element.classList.add('codelines')
     this.$element.setAttribute('role', 'radiogroup')
     this.$element.setAttribute('aria-live', 'polite')
-    if (config?.pseudo)
-      this.$element.classList.add('pseudo')
+    if (config?.pseudo) this.$element.classList.add('pseudo')
     let lines = code.split('\n')
     this.lines = []
     // Ignore leading/trailing blank lines
     let start = 0
-    while (start < lines.length && lines[start].trim() === '')
-      start++
+    while (start < lines.length && lines[start].trim() === '') start++
     let end = lines.length - 1
-    while (end >= 0 && lines[end].trim() === '')
-      end--
-    for (let i = start; i <= end; i++)
-      this.lines.push(lines[i])
+    while (end >= 0 && lines[end].trim() === '') end--
+    for (let i = start; i <= end; i++) this.lines.push(lines[i])
   }
 
   $attach(sim) {
@@ -401,22 +405,22 @@ export class Code {
       line.setAttribute('role', 'radio')
       line.innerHTML = this.lines[i]
       //if (this.isSelectable(this.lines[i]))  // TODO XXX
-        sim.selectable(line, 'line')
-      
+      sim.selectable(line, 'line')
+
       this.$element.appendChild(line)
     }
     this.$sim = sim
     this.go(1)
   }
 
-  isSelectable(line) { // TODO: Allow customization
+  isSelectable(line) {
+    // TODO: Allow customization
     return !['', '{', '}', 'else', 'else:', 'else :', 'do'].includes(line.trim())
   }
 
   nextLine() {
     for (let i = this.currentLine + 1; i <= this.lines.length; i++) {
-      if (this.isSelectable(this.lines[i - 1]))
-        return i
+      if (this.isSelectable(this.lines[i - 1])) return i
     }
     return -1
   }
@@ -443,18 +447,20 @@ export class Code {
   }
 
   ask(...lines) {
-    const prompt = lines.length > 0 && typeof lines[lines.length - 1] === 'string'
-          ? lines.pop() : _('click_line_inst')
+    const prompt =
+      lines.length > 0 && typeof lines[lines.length - 1] === 'string'
+        ? lines.pop()
+        : _('click_line_inst')
     if (lines.length == 0) lines[0] = this.nextLine()
     let silent = !this.$sim || this.$sim.silent
     if (!silent) {
       tabindex(this.$element, 'selectable-line', 0)
       this.$element.children[this.currentLine - 1].focus()
     }
-    
+
     return {
       type: 'select',
-      elements: lines.map(line => this.$element.children[line - 1]),
+      elements: lines.map((line) => this.$element.children[line - 1]),
       done: () => {
         if (!silent) {
           tabindex(this.$element, 'selectable-line', -1)
@@ -520,7 +526,7 @@ export class Terminal {
         span.blur()
         span.textContent = line ?? inputText
       },
-      description: `Terminal output ${line}`
+      description: `Terminal output ${line}`,
     }
   }
 }
@@ -528,14 +534,15 @@ export class Terminal {
 // --------------------------------------------------------------------
 
 export class Null {
-  toString() { return 'null' } // TODO In Python it's 'None'
+  toString() {
+    return 'null'
+  } // TODO In Python it's 'None'
 }
 
 // --------------------------------------------------------------------
 
 class Node {
-  constructor() {
-  }
+  constructor() {}
 }
 
 // --------------------------------------------------------------------
@@ -551,26 +558,19 @@ export class Ref {
     this.$node = node instanceof Ref ? node.$valueOf() : node
     const handler = {
       get(target, key, receiver) {
-        if (key === '$valueOf')
-          return () => target.$node
-        else if (typeof key === 'symbol' || key.toString().startsWith('$'))
-          return target[key]
-        else 
-          return target.$node[key]        
+        if (key === '$valueOf') return () => target.$node
+        else if (typeof key === 'symbol' || key.toString().startsWith('$')) return target[key]
+        else return target.$node[key]
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$'))
-          target[key] = value
-        else
-          target.$node[key] = value
+        if (key.toString().startsWith('$')) target[key] = value
+        else target.$node[key] = value
         return true
       },
       deleteProperty(target, key) {
-        if (key.toString().startsWith('$'))
-          return delete target[key]
-        else
-          return delete target.$node[key]
-      }
+        if (key.toString().startsWith('$')) return delete target[key]
+        else return delete target.$node[key]
+      },
     }
     return new Proxy(this, handler)
   }
@@ -580,8 +580,8 @@ export class Ref {
 
 /**
   The address of a non-heap value (only in C style languages)
-*/ 
-export class Addr { 
+*/
+export class Addr {
   /**
    * @param path A path to a memory location
    */
@@ -615,7 +615,7 @@ class NamedValuesNode extends Node {
 
   $attach(sim) {
     this.$sim = sim
-    this.$element.classList.add('node') 
+    this.$element.classList.add('node')
     for (const name in this.$values) {
       this.$set(name, this.$values[name])
       // calls renderValue, which recursively calls attach on embedded nodes
@@ -629,17 +629,17 @@ class NamedValuesNode extends Node {
   $path(name, value) {
     let path = wrap(value)
 
-    path.$assign = (newValue) => { this.$set(name, newValue) }
+    path.$assign = (newValue) => {
+      this.$set(name, newValue)
+    }
     // Don't change names of top-level objects
     if (!path.$toplevel) {
-      let pathName = this.$name ?? '' 
-      if (/^\p{L}[\p{L}\p{N}]*$/u.test(name))
-        pathName = `${pathName}.${name}`
-      else
-        pathName = `${pathName}[${name}]`
+      let pathName = this.$name ?? ''
+      if (/^\p{L}[\p{L}\p{N}]*$/u.test(name)) pathName = `${pathName}.${name}`
+      else pathName = `${pathName}[${name}]`
       path.$name = pathName
     }
-    
+
     return path
   }
 
@@ -656,18 +656,14 @@ class NamedValuesNode extends Node {
         }
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$'))
-          target[key] = value
-        else
-          target.$set(key, value)
+        if (key.toString().startsWith('$')) target[key] = value
+        else target.$set(key, value)
         return true
       },
       deleteProperty(target, key) {
-        if (key.toString().startsWith('$'))
-          return delete target[key]
-        else
-          return target.$delete(key)
-      }
+        if (key.toString().startsWith('$')) return delete target[key]
+        else return target.$delete(key)
+      },
     }
     return new Proxy(this, handler)
   }
@@ -683,7 +679,7 @@ class NamedValuesNode extends Node {
      Sets a name/value. Called from $proxy.
   */
   $set(name, value) {
-    const path = this.$path(name, value)    
+    const path = this.$path(name, value)
     this.$values[name] = path
     if ('$hidden' in this && this.$hidden.includes(name)) return
     if (this.$sim !== undefined) {
@@ -710,8 +706,7 @@ class NamedValuesNode extends Node {
     for (const name in this.$values) {
       const value = this.$values[name]
       f(name, value)
-      if (value instanceof NamedValuesNode)
-        value.$forEachDescendant(f)
+      if (value instanceof NamedValuesNode) value.$forEachDescendant(f)
     }
   }
 }
@@ -754,10 +749,14 @@ class TableNode extends NamedValuesNode {
   }
 
   $getValueContainer(name, path) {
-    let nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
+    let nameElement = [...this.$element.getElementsByClassName('name')].find(
+      (e) => e.textContent === '' + name,
+    )
     if (nameElement === undefined) {
       this.$addRow(name)
-      nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
+      nameElement = [...this.$element.getElementsByClassName('name')].find(
+        (e) => e.textContent === '' + name,
+      )
     }
     const valueElement = nameElement.nextSibling
     if (path instanceof NamedValuesNode) {
@@ -767,7 +766,7 @@ class TableNode extends NamedValuesNode {
       nameElement.classList.remove('fat')
       valueElement.classList.remove('fat')
     }
-    return valueElement.firstChild 
+    return valueElement.firstChild
   }
 
   $addRow(name) {
@@ -775,8 +774,7 @@ class TableNode extends NamedValuesNode {
     nameElement.classList.add('name')
     nameElement.textContent = name
     const names = /^[\p{L}\p{Pc}][\p{L}\p{N}\p{Pc}]*$/u // Letters, numbers (but not at the beginning), punctuation connectors
-    if (!names.test(name))
-      nameElement.classList.add('pseudo')
+    if (!names.test(name)) nameElement.classList.add('pseudo')
     nameElement.id = 'field' + counter('field')
     this.$element.appendChild(nameElement)
     const valueElement = document.createElement('div')
@@ -784,18 +782,19 @@ class TableNode extends NamedValuesNode {
     this.$element.appendChild(valueElement)
     const fieldValueSpan = document.createElement('span')
     valueElement.appendChild(fieldValueSpan)
-    if ('dropHistory' in this.$config) 
-      fieldValueSpan.classList.add('dropHistory')
+    if ('dropHistory' in this.$config) fieldValueSpan.classList.add('dropHistory')
     setTextContent(fieldValueSpan, undefined, 'empty')
-    this.$attachListeners(fieldValueSpan)    
+    this.$attachListeners(fieldValueSpan)
     fieldValueSpan.setAttribute('aria-live', 'polite')
     this.$adjustTitle()
   }
 
   $deleteRow(name) {
-    if (this.$sim === undefined) return    
+    if (this.$sim === undefined) return
     // Delete from HTML
-    const nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
+    const nameElement = [...this.$element.getElementsByClassName('name')].find(
+      (e) => e.textContent === '' + name,
+    )
     if (nameElement !== undefined) {
       nameElement.nextSibling.remove()
       nameElement.remove()
@@ -805,26 +804,29 @@ class TableNode extends NamedValuesNode {
   }
 
   $adjustTitle() {
-    const titleElements = [...this.$element.children].filter(child => child.classList.contains('title'))
+    const titleElements = [...this.$element.children].filter((child) =>
+      child.classList.contains('title'),
+    )
     const childCount = this.$element.children.length
     if (titleElements.length > 0) {
       if (childCount > 1) {
-        if (this.$config.title)
-          titleElements[0].innerHTML = this.$config.title
-        else
-          this.$element.removeChild(titleElements[0])
+        if (this.$config.title) titleElements[0].innerHTML = this.$config.title
+        else this.$element.removeChild(titleElements[0])
       } else {
         if (this.$config.emptyTitle || this.$config.title)
           titleElements[0].innerHTML = this.$config.emptyTitle || this.$config.title
-        else
-          this.$element.removeChild(titleElements[0])        
+        else this.$element.removeChild(titleElements[0])
       }
-    } else if (childCount > 0 && this.$config.title || childCount === 0 && (this.$config.emptyTitle || this.$config.title)) {
+    } else if (
+      (childCount > 0 && this.$config.title) ||
+      (childCount === 0 && (this.$config.emptyTitle || this.$config.title))
+    ) {
       const title = document.createElement('div')
       title.classList.add('title')
-      title.innerHTML = this.$element.children > 0
-        ? this.$config.title
-        : this.$config.emptyTitle || this.$config.title
+      title.innerHTML =
+        this.$element.children > 0
+          ? this.$config.title
+          : this.$config.emptyTitle || this.$config.title
       this.$element.prepend(title)
     }
   }
@@ -832,7 +834,7 @@ class TableNode extends NamedValuesNode {
   $attachListeners(fieldValueSpan) {
     if (this.$sim === undefined) return
     this.$sim.editable(fieldValueSpan)
-    
+
     this.$sim.connectionSource(fieldValueSpan)
     if (this.$sim.language === 'cpp') {
       this.$sim.connectionTarget(fieldValueSpan)
@@ -873,12 +875,12 @@ export class Frame extends TableNode {
     this.$element.classList.add('frame')
     // setAriaDescription(this.$element, 'Variables', 'frame')
     this.$element.setAttribute('aria-label', this.$name)
-  }  
+  }
 }
 
 // --------------------------------------------------------------------
 
-export class Arr extends TableNode  {
+export class Arr extends TableNode {
   constructor(...args) {
     super(...args)
     this.$values.length = 0
@@ -893,18 +895,15 @@ export class Arr extends TableNode  {
     // setAriaDescription(this.$element, 'Array', 'array')
     this.$element.setAttribute('aria-label', this.$name)
   }
-  
+
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (typeof key === 'symbol' || key.toString().startsWith('$'))
-          return target[key]
-        else
-          return target.$get(key)
+        if (typeof key === 'symbol' || key.toString().startsWith('$')) return target[key]
+        else return target.$get(key)
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$'))
-          target[key] = value
+        if (key.toString().startsWith('$')) target[key] = value
         else if (key === 'length') {
           let currentLength = target.$values.length
           target.$values.length = value
@@ -916,8 +915,7 @@ export class Arr extends TableNode  {
             currentLength--
             target.$delete(currentLength)
           }
-        }
-        else if (key.match(/[0-9]+/)) {
+        } else if (key.match(/[0-9]+/)) {
           const currentLength = target.$values.length
           if (currentLength <= key) {
             receiver.length = Number.parseInt(key) + 1
@@ -925,7 +923,7 @@ export class Arr extends TableNode  {
           target.$set(key, value)
         }
         return true
-      }
+      },
     }
     return new Proxy(this, handler)
   }
@@ -944,7 +942,7 @@ export class Seq extends NamedValuesNode {
       else if (Array.isArray(values)) this.$values = values
       else this.$values = [values]
     }
-    this.$hidden = ['length']    
+    this.$hidden = ['length']
     this.$name = 'Sequence ' + counter('Seq')
 
     this.$indexes = {}
@@ -961,7 +959,7 @@ export class Seq extends NamedValuesNode {
         const result = delete target[key]
         this.$refreshIndexes()
         return result
-      }
+      },
     }
     this.index = new Proxy(this.$indexes, indexProxyHandler)
 
@@ -984,7 +982,7 @@ export class Seq extends NamedValuesNode {
     indexRow.classList.add('index')
     this.$element.appendChild(indexRow)
     this.$addElements(this.$values.length)
-    super.$attach(sim) 
+    super.$attach(sim)
   }
 
   $addElements(n) {
@@ -1016,20 +1014,17 @@ export class Seq extends NamedValuesNode {
     for (let i = 0; i < indexCells.length; i++) {
       const values = []
       for (const name in this.$indexes) {
-        if (this.$indexes[name] === i)
-          values.push(name)
+        if (this.$indexes[name] === i) values.push(name)
       }
       indexCells[i].innerHTML = values.join('<br/>')
     }
   }
- 
+
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/))
-          return target.$values[key]
-        else
-          return target[key]
+        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
+        else return target[key]
       },
       set(target, key, value, receiver) {
         if (key === 'length') {
@@ -1041,19 +1036,17 @@ export class Seq extends NamedValuesNode {
           if (currentLength > value) {
             target.$deleteElements(currentLength - value)
           }
-        }
-        else if (key.match(/[0-9]+/)) {
+        } else if (key.match(/[0-9]+/)) {
           let currentLength = target.$values.length
           if (currentLength <= key) {
             receiver.length = Number.parseInt(key) + 1
           }
           target.$set(key, value)
-        }
-        else {
+        } else {
           target[key] = value
         }
         return true
-      }
+      },
     }
     return new Proxy(this, handler)
   }
@@ -1075,38 +1068,33 @@ class MatRow extends NamedValuesNode {
     // need row indexes on left because might be ragged right
     const indexCell = document.createElement('td')
     indexCell.classList.add('index')
-    this.$element.appendChild(indexCell)        
+    this.$element.appendChild(indexCell)
 
     for (let i = 0; i < this.$values.length; i++) {
       const cell = document.createElement('td')
       cell.classList.add('dropHistory')
       this.$element.appendChild(cell)
     }
-    super.$attach(sim) 
+    super.$attach(sim)
   }
-  
+
   $getValueContainer(n, path) {
     n = n * 1 // Force string to int
     return this.$element.children[n + 1]
   }
-  
-  $proxy() { 
+
+  $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/))
-          return target.$values[key]
-        else
-          return target[key]
+        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
+        else return target[key]
       },
       set(target, key, value, receiver) {
-        if (key === 'length')
-          return false
-        else if (key.match(/[0-9]+/)) 
-          target.$set(key, value)
-        else 
-          target[key] = value
+        if (key === 'length') return false
+        else if (key.match(/[0-9]+/)) target.$set(key, value)
+        else target[key] = value
         return true
-      }
+      },
     }
     return new Proxy(this, handler)
   }
@@ -1117,7 +1105,7 @@ export class Mat {
     this.$values = []
     for (let i = 0; i < elements.length; i++) {
       const row = new MatRow(elements[i])
-      this.$values.push(row);
+      this.$values.push(row)
     }
 
     this.$rowIndexes = []
@@ -1136,7 +1124,7 @@ export class Mat {
         const result = delete target[key]
         this.$refreshRowIndexes()
         return result
-      }
+      },
     })
 
     this.columnIndex = new Proxy(this.$columnIndexes, {
@@ -1152,10 +1140,10 @@ export class Mat {
         const result = delete target[key]
         this.$refreshColumnIndexes()
         return result
-      }
+      },
     })
     this.$name = 'Matrix ' + counter('Mat')
-    
+
     return this.$proxy()
   }
 
@@ -1176,8 +1164,7 @@ export class Mat {
     const indexRow = document.createElement('tr')
     indexRow.classList.add('seq')
     indexRow.classList.add('index')
-    for (let i = 0; i <= maxlen; i++)
-      indexRow.appendChild(document.createElement('td'))
+    for (let i = 0; i <= maxlen; i++) indexRow.appendChild(document.createElement('td'))
     this.$element.appendChild(indexRow)
   }
 
@@ -1187,8 +1174,7 @@ export class Mat {
     for (let i = 0; i < rows.length - 1; i++) {
       const values = []
       for (const name in this.$rowIndexes) {
-        if (this.$rowIndexes[name] === i)
-          values.push(name)
+        if (this.$rowIndexes[name] === i) values.push(name)
       }
       rows[i].children[0].innerHTML = values.join(' ')
     }
@@ -1200,8 +1186,7 @@ export class Mat {
     for (let i = 1; i < indexCells.length; i++) {
       const values = []
       for (const name in this.$columnIndexes) {
-        if (this.$columnIndexes[name] === i - 1)
-          values.push(name)
+        if (this.$columnIndexes[name] === i - 1) values.push(name)
       }
       indexCells[i].innerHTML = values.join('<br/>')
     }
@@ -1210,11 +1195,9 @@ export class Mat {
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/))
-          return target.$values[key]
-        else
-          return target[key]
-      }
+        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
+        else return target[key]
+      },
     }
     return new Proxy(this, handler)
   }
@@ -1224,20 +1207,20 @@ export class Mat {
 
 class GraphVertex extends TableNode {
   constructor(title) {
-    super({ title, dropHistory: true})
+    super({ title, dropHistory: true })
     this.$title = title
     this.$name = title
-    this.$hidden = ['color']    
+    this.$hidden = ['color']
     this.$color = 'lightsteelblue'
     this.$toplevel = true // Can't call in sim.add since that only happens after layout
     return this.$proxy()
   }
-  toString() { return this.$title }
+  toString() {
+    return this.$title
+  }
   $get(key) {
-    if (key === 'color')
-      return this.$color
-    else
-      return super.$get(key)
+    if (key === 'color') return this.$color
+    else return super.$get(key)
   }
   $set(key, value) {
     if (key === 'color') {
@@ -1255,7 +1238,7 @@ class GraphVertex extends TableNode {
     this.$element.style.background = this.$color
     sim.draggable(this)
   }
-  static $compare = (u, v) => u.$title < v.$title ? -1 : u.$title === v.$title ? 0 : 1
+  static $compare = (u, v) => (u.$title < v.$title ? -1 : u.$title === v.$title ? 0 : 1)
 }
 
 class GraphEdge {
@@ -1266,8 +1249,12 @@ class GraphEdge {
     this.$value = undefined
     this.$name = `${from.$name}${to.$name}`
   }
-  get from() { return this.$from }
-  get to() { return this.$to }
+  get from() {
+    return this.$from
+  }
+  get to() {
+    return this.$to
+  }
   get value() {
     // TODO Return path
     return this.$value
@@ -1276,30 +1263,29 @@ class GraphEdge {
     this.$value = newValue
     // TODO update visual
   }
-  get color() { return this.$color }
+  get color() {
+    return this.$color
+  }
   set color(newColor) {
     this.$color = newColor
     if (this.$svg !== undefined) {
       for (const p of this.$svg.children) {
-        if (p.style.fill !== 'none' && p.style.fill !== newColor)
-          p.style.fill = newColor
-        if (p.style.stroke !== 'none' && p.style.stroke !== newColor)
-          p.style.stroke = newColor
+        if (p.style.fill !== 'none' && p.style.fill !== newColor) p.style.fill = newColor
+        if (p.style.stroke !== 'none' && p.style.stroke !== newColor) p.style.stroke = newColor
       }
     }
   }
-  
+
   $attach(sim) {
     if (this.value === undefined) return
     const fieldValueSpan = document.createElement('span')
     fieldValueSpan.classList.add('edgevalue')
-    this.$element = fieldValueSpan    
+    this.$element = fieldValueSpan
     if (horstmann_common.isScalar(this.value)) {
       setTextContent(fieldValueSpan, this.value, 'edge value')
       fieldValueSpan.setAttribute('aria-live', 'polite')
       sim.editable(fieldValueSpan)
-    }
-    else {
+    } else {
       fieldValueSpan.appendChild(this.value.$element)
       sim.selectable(fieldValueSpan, 'field')
       this.value.$attach?.(sim)
@@ -1308,11 +1294,11 @@ class GraphEdge {
   }
   static $compare = (e, f) => {
     const d = GraphVertex.$compare(e.$from, f.$from)
-    return d !== 0 ? d : GraphVertex.$compare(e.$to, f.$to)    
+    return d !== 0 ? d : GraphVertex.$compare(e.$to, f.$to)
   }
 }
 
-class GraphBase {  
+class GraphBase {
   constructor(directed) {
     this.$verts = []
     this.$edges = []
@@ -1325,14 +1311,14 @@ class GraphBase {
       return undefined
     }
     const v = new GraphVertex(this.$nextVertex)
-    this.$nextVertex = String.fromCodePoint(this.$nextVertex.codePointAt(0) + 1)    
+    this.$nextVertex = String.fromCodePoint(this.$nextVertex.codePointAt(0) + 1)
     this.$verts.push(v)
     this.$verts.sort(GraphVertex.$compare) // TODO binary search, also in edge?
     v.$outgoing = []
     v.$incoming = []
     return v
   }
-  
+
   edge(v, w) {
     if (this.$sim !== undefined) {
       alert('Layout already called')
@@ -1341,29 +1327,28 @@ class GraphBase {
     const e = new GraphEdge(v, w)
     this.$edges.push(e)
     this.$edges.sort(GraphEdge.$compare)
-    
+
     v.$outgoing.push(e)
     v.$outgoing.sort(GraphEdge.$compare)
 
     if (this.$directed) {
-      w.$incoming.push(e) 
+      w.$incoming.push(e)
       w.$incoming.sort(GraphEdge.$compare)
     } else {
-      w.$outgoing.push(e) 
+      w.$outgoing.push(e)
       w.$outgoing.sort(GraphEdge.$compare)
     }
     // TODO compare undirected?
     return e
   }
   adjacent(v) {
-    return v.$outgoing.map(e => e.$to)
+    return v.$outgoing.map((e) => e.$to)
   }
   incident(v) {
     return v.$outgoing
   }
   findVertex(title) {
-    for (const v of this.$verts)
-      if (v.toString() === title.toString()) return v
+    for (const v of this.$verts) if (v.toString() === title.toString()) return v
     return undefined
   }
   verts() {
@@ -1372,7 +1357,8 @@ class GraphBase {
   edges() {
     return this.$edges
   }
-  layout(sim, x, y, width, height) { // TODO Or call this in $attach?
+  layout(sim, x, y, width, height) {
+    // TODO Or call this in $attach?
     if (sim.silent) return
     if (this.$sim !== undefined) {
       alert('Layout already called')
@@ -1385,15 +1371,15 @@ class GraphBase {
     this.$y = y
     this.$width = width
     this.$height = height
-    
+
     // Fruchterman-Reingold
     // https://faculty.washington.edu/joelross/courses/archive/s13/cs261/lab/k/
 
     // these can be tweaked
     let iterations = 100
-    let c = 1 
+    let c = 1
     let gravity = 1.1
-    let cool = temp => temp > 1 ? temp * 0.95 : temp - 1 / iterations
+    let cool = (temp) => (temp > 1 ? temp * 0.95 : temp - 1 / iterations)
 
     let area = 4
     let k = c * Math.sqrt(area / this.$verts.length)
@@ -1403,14 +1389,14 @@ class GraphBase {
     let j = 0
     for (const v of this.$verts) {
       v.$pos = {
-        x: Math.cos(j * 2 * Math.PI / this.$verts.length),
-        y: Math.sin(j * 2 * Math.PI / this.$verts.length),
+        x: Math.cos((j * 2 * Math.PI) / this.$verts.length),
+        y: Math.sin((j * 2 * Math.PI) / this.$verts.length),
       }
       j++
     }
     let step = () => {
       // gravity is from https://editor.p5js.org/JeromePaddick/sketches/bjA_UOPip
-      for (const v of this.$verts) {        
+      for (const v of this.$verts) {
         v.$disp = { x: -v.$pos.x * 1.1, y: -v.$pos.y * 1.1 }
       }
 
@@ -1420,9 +1406,9 @@ class GraphBase {
           if (u !== v) {
             const dx = v.$pos.x - u.$pos.x
             const dy = v.$pos.y - u.$pos.y
-            const len2 = Math.max(1E-8, dx * dx + dy * dy)
-            v.$disp.x += dx * k * k / len2
-            v.$disp.y += dy * k * k / len2
+            const len2 = Math.max(1e-8, dx * dx + dy * dy)
+            v.$disp.x += (dx * k * k) / len2
+            v.$disp.y += (dy * k * k) / len2
           }
         }
       }
@@ -1431,16 +1417,16 @@ class GraphBase {
         const dx = e.$to.$pos.x - e.$from.$pos.x
         const dy = e.$to.$pos.y - e.$from.$pos.y
         const len = Math.hypot(dx, dy)
-        e.$to.$disp.x -= dx * len / k
-        e.$to.$disp.y -= dy * len / k
-        e.$from.$disp.x += dx * len / k
-        e.$from.$disp.y += dy * len / k
+        e.$to.$disp.x -= (dx * len) / k
+        e.$to.$disp.y -= (dy * len) / k
+        e.$from.$disp.x += (dx * len) / k
+        e.$from.$disp.y += (dy * len) / k
       }
       // limit max displacement to temperature
       for (const v of this.$verts) {
         const len = Math.hypot(v.$disp.x, v.$disp.y)
-        v.$pos.x += v.$disp.x * temp / len
-        v.$pos.y += v.$disp.y * temp / len
+        v.$pos.x += (v.$disp.x * temp) / len
+        v.$pos.y += (v.$disp.y * temp) / len
         // Limiting to the bounding box did not work well
       }
       temp = cool(temp)
@@ -1460,30 +1446,33 @@ class GraphBase {
 
       let maxvertexwidth = 1 // TODO
       let maxvertexheight = 1
-      
+
       for (const v of this.$verts) {
-        let x = this.$x + (this.$width - maxvertexwidth)  * (v.$pos.x - xmin) / (xmax - xmin)
-        let y = this.$y + (this.$height - maxvertexheight) * (v.$pos.y - ymin) / (ymax - ymin)
+        let x = this.$x + ((this.$width - maxvertexwidth) * (v.$pos.x - xmin)) / (xmax - xmin)
+        let y = this.$y + ((this.$height - maxvertexheight) * (v.$pos.y - ymin)) / (ymax - ymin)
         sim.add(x, y, v)
       }
       for (const e of this.$edges) {
-        if (!('$sim' in e)) 
-          e.$attach?.(sim)
-        
+        if (!('$sim' in e)) e.$attach?.(sim)
+
         let from = e.$from.$element
         let to = e.$to.$element
-        sim.addConnector(from, to, (f, tb) => {
-          console.log('draw', e)
-          e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
-          e.$svg.style.pointerEvents = 'auto' 
-          sim.selectable(e.$svg, 'edge', e)
-          return e.$svg
-        }, e.$element)
+        sim.addConnector(
+          from,
+          to,
+          (f, tb) => {
+            console.log('draw', e)
+            e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
+            e.$svg.style.pointerEvents = 'auto'
+            sim.selectable(e.$svg, 'edge', e)
+            return e.$svg
+          },
+          e.$element,
+        )
       }
     }
 
-    for (let iter = 1; iter <= iterations; iter++)
-      step()
+    for (let iter = 1; iter <= iterations; iter++) step()
     draw()
   }
 }
@@ -1500,11 +1489,11 @@ export class Graph extends GraphBase {
     return undefined
   }
   other(e, v) {
-    return e.$from === v ? e.$to : e.$from 
+    return e.$from === v ? e.$to : e.$from
   }
 }
 
-export class Digraph extends GraphBase {  
+export class Digraph extends GraphBase {
   constructor() {
     super(true)
   }
@@ -1516,7 +1505,7 @@ export class Digraph extends GraphBase {
   }
   findEdge(v, w) {
     for (const e of v.$outgoing) {
-      if (e.$to === w) return e 
+      if (e.$to === w) return e
     }
     return undefined
   }
@@ -1537,10 +1526,14 @@ export class BinaryTreeNode extends Node {
 
   static drawConnector = (f, tb) => {
     const fb = getBounds(f)
-    const svg = drawArrow({ x: fb.x + fb.width / 2, y: fb.y + fb.height / 2, width: 0, height: 0 }, tb, 'black')
+    const svg = drawArrow(
+      { x: fb.x + fb.width / 2, y: fb.y + fb.height / 2, width: 0, height: 0 },
+      tb,
+      'black',
+    )
     return svg
   }
-      
+
   get color() {
     return this.$color
   }
@@ -1559,7 +1552,9 @@ export class BinaryTreeNode extends Node {
 
   set value(newValue) {
     this.$value = wrap(newValue)
-    this.$value.$assign = (newValue) => { this.value = newValue }
+    this.$value.$assign = (newValue) => {
+      this.value = newValue
+    }
     if (this.$sim !== undefined) {
       this.$value.$valueContainer = this.$element.children[0].children[0]
       this.$sim.renderValue(this.$value)
@@ -1573,10 +1568,12 @@ export class BinaryTreeNode extends Node {
   set left(node) {
     // TODO If setting to null and previously wasn't null, what happens to the arrow?
     this.$left = node === null || node instanceof Null ? new Null() : new Ref(node)
-    this.$left.$assign = (newValue) => { this.left = newValue }
+    this.$left.$assign = (newValue) => {
+      this.left = newValue
+    }
     this.$left.$drawConnector = BinaryTreeNode.drawConnector
     this.$left.$name = `${this.$name}.left`
-      
+
     if (this.$sim !== undefined) {
       this.$left.$valueContainer = this.$element.children[1]
       if (this.$left.$sim === undefined) this.$left.$attach?.(this.$sim)
@@ -1590,10 +1587,12 @@ export class BinaryTreeNode extends Node {
 
   set right(node) {
     this.$right = node === null || node instanceof Null ? new Null() : new Ref(node)
-    this.$right.$assign = (newValue) => { this.right = newValue }
+    this.$right.$assign = (newValue) => {
+      this.right = newValue
+    }
     this.$right.$drawConnector = BinaryTreeNode.drawConnector
     this.$right.$name = `${this.$name}.right`
-    
+
     if (this.$sim !== undefined) {
       this.$right.$valueContainer = this.$element.children[2]
       if (node !== null && node.$sim === undefined) node.$attach?.(this.$sim)
@@ -1603,7 +1602,7 @@ export class BinaryTreeNode extends Node {
 
   $attach(sim) {
     this.$sim = sim
-    
+
     this.$element = document.createElement('div')
     this.$element.classList.add('treenode')
     this.$element.classList.add('node') // round corners
@@ -1617,18 +1616,18 @@ export class BinaryTreeNode extends Node {
     const leftChild = document.createElement('div')
     leftChild.classList.add('dropHistory')
     this.$element.appendChild(leftChild)
-    const rightChild = document.createElement('div')    
+    const rightChild = document.createElement('div')
     rightChild.classList.add('dropHistory')
     this.$element.appendChild(rightChild)
-    
+
     sim.editable(valueContainer)
-    sim.selectable(this.$element, 'node') 
+    sim.selectable(this.$element, 'node')
     sim.selectable(leftChild, 'field') // for Null
     sim.selectable(rightChild, 'field') // for Null
     sim.connectionSource(leftChild, BinaryTreeNode.drawConnector)
     sim.connectionSource(rightChild, BinaryTreeNode.drawConnector)
     sim.connectionTarget(this.$element)
-    
+
     sim.add(0, 0, this)
 
     this.value = this.value
@@ -1637,7 +1636,7 @@ export class BinaryTreeNode extends Node {
     this.right = this.right
   }
 
-  layout(sim, gridX, gridY) { 
+  layout(sim, gridX, gridY) {
     if (sim.silent) return undefined
     if (this.$sim === undefined) this.$attach(sim)
     const x = gridX * GRIDX_TO_EM
@@ -1650,7 +1649,7 @@ export class BinaryTreeNode extends Node {
     const right = this.$right
     this.$left = new Null()
     this.$right = new Null()
-    
+
     const nodeBounds = getBounds(this.$element)
 
     const cy = y + nodeBounds.height + YGAP
@@ -1678,7 +1677,7 @@ export class BinaryTreeNode extends Node {
     sim.dragTo(nx, y, this) // TODO Coords
     this.left = left
     this.right = right
-    
+
     return { width, height: nodeBounds.height + cheight }
   }
 
@@ -1701,8 +1700,8 @@ window.addEventListener('load', () => {
     let commonUI = undefined
 
     let arena = undefined
-    let arenaTopLevelNodes = [] 
-    
+    let arenaTopLevelNodes = []
+
     let stepIter = undefined
     let currentStepIndex = undefined
     let currentStep = undefined
@@ -1712,15 +1711,15 @@ window.addEventListener('load', () => {
     let rubberbandStarted = false
     let rubberbandDrawFunction = undefined
     let connectorsFrom = new Map()
-      // maps $valueContainer/$element of start to map of $valueContainer/$element of end to { svg, draw: function to redraw }
+    // maps $valueContainer/$element of start to map of $valueContainer/$element of end to { svg, draw: function to redraw }
     let connectorsTo = new Map()
-      // maps $valueContainer/$element of end to set of $valueContainer/$element of starts
+    // maps $valueContainer/$element of end to set of $valueContainer/$element of starts
 
     let dragStarted = false
     let draggedNode = undefined
     let dragOffset = undefined
 
-    const nodeResizeObserver = new ResizeObserver(entries => {
+    const nodeResizeObserver = new ResizeObserver((entries) => {
       // Recompute the connectors
       let connectorArena = arena.nextSibling
       connectorArena.innerHTML = ''
@@ -1736,34 +1735,37 @@ window.addEventListener('load', () => {
       }
       resize()
     })
-    
+
     // Utility functions accessed in sim
-    const str = obj => {
-      let result = obj.toString();
-      if (result === '') result = '&#160;';
-      return result;
+    const str = (obj) => {
+      let result = obj.toString()
+      if (result === '') result = '&#160;'
+      return result
     }
 
     function isNumeric(x) {
-      return !isNaN(parseFloat(x)) && isFinite(x);
+      return !isNaN(parseFloat(x)) && isFinite(x)
     }
     function isString(x) {
-      return typeof x === 'string' || ((!!x && typeof x === 'object') && Object.prototype.toString.call(x) === '[object String]');
+      return (
+        typeof x === 'string' ||
+        (!!x && typeof x === 'object' && Object.prototype.toString.call(x) === '[object String]')
+      )
     }
 
     /*
       Converts pixels in the object arena to em
     */
-    const pxToEm = x => {
+    const pxToEm = (x) => {
       //let pxPerRem = parseFloat(getComputedStyle(document.documentElement).fontSize)
       let pxPerEm = parseFloat(window.getComputedStyle(arena.parentNode).fontSize)
-      return x / pxPerEm / horstmann_common.getScaleFactor();
+      return x / pxPerEm / horstmann_common.getScaleFactor()
     }
 
     const setPosition = (element, x, y) => {
       element.style.position = 'absolute'
-      element.style.left = (x * GRIDX_TO_EM) + 'em' 
-      element.style.top = (y * GRIDY_TO_EM) + 'em'
+      element.style.left = x * GRIDX_TO_EM + 'em'
+      element.style.top = y * GRIDY_TO_EM + 'em'
     }
 
     const center = (element, from, to) => {
@@ -1776,17 +1778,17 @@ window.addEventListener('load', () => {
       const x2 = toBounds.x + toBounds.width / 2
       const y2 = toBounds.y + toBounds.height / 2
       element.style.position = 'absolute'
-      element.style.left = ((x1 + x2 - elementBounds.width) / 2) + 'em' 
-      element.style.top = ((y1 + y2 - elementBounds.height) / 2) + 'em'      
+      element.style.left = (x1 + x2 - elementBounds.width) / 2 + 'em'
+      element.style.top = (y1 + y2 - elementBounds.height) / 2 + 'em'
     }
 
     /*
       Gets the extent of an array of elements
     */
-    const getExtent = elements => {
+    const getExtent = (elements) => {
       let result = {
         width: 0,
-        height: 0
+        height: 0,
       }
       for (let i = 0; i < elements.length; i++) {
         let bounds = getBounds(elements[i])
@@ -1799,11 +1801,11 @@ window.addEventListener('load', () => {
     /*
       Gets the extent of an SVG of element
     */
-    const getSVGExtent = svg => {
+    const getSVGExtent = (svg) => {
       const elements = svg.children
       let result = {
         width: 0,
-        height: 0
+        height: 0,
       }
       for (let i = 0; i < elements.length; i++) {
         let bounds = elements[i].getBBox()
@@ -1812,7 +1814,7 @@ window.addEventListener('load', () => {
       }
       return result
     }
-    
+
     /*
       Resizes the arena and connectors to hold all elements.
     */
@@ -1822,30 +1824,50 @@ window.addEventListener('load', () => {
       let connectorArenaBounds = getSVGExtent(connectorArena)
       let height = Math.max(extent.height, connectorArenaBounds.height)
       let width = Math.max(extent.width, connectorArenaBounds.width)
-      
+
       connectorArena.setAttribute('viewBox', `0 0 ${width} ${height}`)
       connectorArena.style.width = width + 'em'
       connectorArena.style.height = height + 'em'
 
       arena.style.width = width + 'em'
       arena.style.height = height + 'em'
-      arena.parentNode.style.width = width + 'em' 
+      arena.parentNode.style.width = width + 'em'
       arena.parentNode.style.height = height + 'em'
     }
 
-    const selected = (element, value) => { // value can be undefined
-      if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
+    const selected = (element, value) => {
+      // value can be undefined
+      if (
+        currentStep === undefined ||
+        currentStep.type !== 'select' ||
+        element.classList.contains('hc-bad')
+      )
+        return
       // Ignore selections of the wrong type
-      if (element.classList.contains('selectable-node')
-          && !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
-      if (element.classList.contains('selectable-field')
-          && !(currentStep.value instanceof Null || currentStep.value instanceof Node && !currentStep.value.$toplevel)) return
-      if (element.classList.contains('selectable-edge')
-          && !(currentStep.value instanceof GraphEdge)) return
-      
+      if (
+        element.classList.contains('selectable-node') &&
+        !(currentStep.value instanceof Ref || currentStep.value instanceof Node)
+      )
+        return
+      if (
+        element.classList.contains('selectable-field') &&
+        !(
+          currentStep.value instanceof Null ||
+          (currentStep.value instanceof Node && !currentStep.value.$toplevel)
+        )
+      )
+        return
+      if (
+        element.classList.contains('selectable-edge') &&
+        !(currentStep.value instanceof GraphEdge)
+      )
+        return
+
       if (currentStepStarted) return
       currentStepStarted = true
-      const good = currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0 || currentStep.elements === undefined && currentStep.value === value
+      const good =
+        (currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0) ||
+        (currentStep.elements === undefined && currentStep.value === value)
       if (good) {
         // Remove old selection so that it doesn't interfere with
         // hc-good marking of new selection
@@ -1858,12 +1880,16 @@ window.addEventListener('load', () => {
         element.classList.add('hc-selected')
         currentStepStarted = false
         stepCompleted(true)
-        setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
+        setTimeout(() => {
+          element.classList.remove('hc-good')
+        }, SHOW_MARKER_DELAY)
       } else {
         element.classList.add('hc-bad')
         currentStepStarted = false
         stepCompleted(false)
-        setTimeout(() => { element.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
+        setTimeout(() => {
+          element.classList.remove('hc-bad')
+        }, SHOW_MARKER_DELAY)
       }
     }
 
@@ -1877,7 +1903,7 @@ window.addEventListener('load', () => {
         } else {
           commonUI.instruction(null, {
             removeBadMarkers: true, // TODO: Really?
-            secondary: _('od_enter_value')
+            secondary: _('od_enter_value'),
           })
         }
       }
@@ -1885,11 +1911,12 @@ window.addEventListener('load', () => {
         let answer = currentStep.value
         if (answer === undefined) {
           stepCompleted(true, inputText)
-        }
-        else if (horstmann_common.matches(inputText, answer)) {
+        } else if (horstmann_common.matches(inputText, answer)) {
           if (element !== undefined) {
             element.classList.add('hc-good')
-            setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
+            setTimeout(() => {
+              element.classList.remove('hc-good')
+            }, SHOW_MARKER_DELAY)
           }
           stepCompleted(true, inputText)
         } else {
@@ -1907,16 +1934,18 @@ window.addEventListener('load', () => {
         stepCompleted(false)
       }
 
-      if (currentStep.target.classList.contains('editable'))
-        tabindex(arena, 'editable', 0)
-      else
-        tabindex(arena, 'selectable-node', 0)
-      
+      if (currentStep.target.classList.contains('editable')) tabindex(arena, 'editable', 0)
+      else tabindex(arena, 'selectable-node', 0)
+
       rubberbandStarted = true
-      rubberbandDrawFunction = to => (drawFunction ?? drawPointer)(element, to)
-      commonUI.instruction(null, { secondary: _('od_arrow_end')}, {
-        removeBadMarkers: true
-      })
+      rubberbandDrawFunction = (to) => (drawFunction ?? drawPointer)(element, to)
+      commonUI.instruction(
+        null,
+        { secondary: _('od_arrow_end') },
+        {
+          removeBadMarkers: true,
+        },
+      )
       element.focus()
     }
 
@@ -1939,113 +1968,108 @@ window.addEventListener('load', () => {
         tracerElement.state.lastStep = currentStepIndex
         commonUI.correct(tracerElement.state)
         prepareNextStep()
-      } else { 
+      } else {
         commonUI.error(tracerElement.state, doStep, {
-          afterAction: prepareNextStep
+          afterAction: prepareNextStep,
         })
       }
     }
 
     // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript/47593316#47593316
-    const mulberry32 = seed => () => {
-      var t = seed += 0x6D2B79F5;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    const mulberry32 = (seed) => () => {
+      var t = (seed += 0x6d2b79f5)
+      t = Math.imul(t ^ (t >>> 15), t | 1)
+      t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
+      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
     }
 
     let random = mulberry32((Math.random() * 4294967296) >>> 0)
 
-    const sim = { // The object that is passed to the algorithm
+    const sim = {
+      // The object that is passed to the algorithm
       // Utility functions
-      randSeed: seed => {
+      randSeed: (seed) => {
         if (seed === undefined) seed = Math.random()
         random = mulberry32((seed * 4294967296) >>> 0)
         return seed
       },
       randInt: (a, b) => {
         // a <= r <= b
-        return Math.floor(a + (b - a + 1) * random());
+        return Math.floor(a + (b - a + 1) * random())
       },
       randDouble: (a, b) => {
-        return a + (b - a) * random() 
+        return a + (b - a) * random()
       },
       randFloat: (a, b) => {
-        return a + (b - a) * random() 
+        return a + (b - a) * random()
       },
       randBoolean: () => {
         return random() < 0.5
       },
       randIntArray: (n, low, high) => {
-        let a = [];
+        let a = []
         for (let i = 0; i < n; i++) {
-          a.push(sim.randInt(low, high));
+          a.push(sim.randInt(low, high))
         }
-        return a;
+        return a
       },
       randDistinctInts: (n, low, high) => {
-        if (n > high - low + 1) throw new Error(`Not ${n} distinct integers between ${low} and ${high}`)
+        if (n > high - low + 1)
+          throw new Error(`Not ${n} distinct integers between ${low} and ${high}`)
         let candidates = []
-        for (let i = low; i <= high; i++) candidates.push(i);
-        let a = [];
+        for (let i = low; i <= high; i++) candidates.push(i)
+        let a = []
         for (let i = 0; i < n; i++) {
           let k = sim.randInt(0, candidates.length - 1)
-          a.push(candidates[k]);
+          a.push(candidates[k])
           candidates[k] = candidates[candidates.length - 1]
           candidates.splice(k, 1)
         }
-        return a;
+        return a
       },
       randIntArray2: (r, c, low, high) => {
-        let a = [];
+        let a = []
         for (let i = 0; i < r; i++) {
-          let b = [];
+          let b = []
           for (let _j2 = 0; _j2 < c; _j2++) {
-            b.push(sim.randInt(low, high));
+            b.push(sim.randInt(low, high))
           }
-          a.push(b);
+          a.push(b)
         }
-        return a;
+        return a
       },
       randSelect: (...args) => {
-        return args[sim.randInt(0, args.length - 1)];
+        return args[sim.randInt(0, args.length - 1)]
       },
       randString: (len, a, b) => {
-        var result = ""
-        for (var i = 0; i < len; i++)
-          result += sim.randCodePoint(a, b)
-        return result;
+        var result = ''
+        for (var i = 0; i < len; i++) result += sim.randCodePoint(a, b)
+        return result
       },
       randCodePoint: (c, d) => {
-        var a = Number.isInteger(c) ? c : c.codePointAt(0); 
-        var b = Number.isInteger(d) ? d : d.codePointAt(0);
+        var a = Number.isInteger(c) ? c : c.codePointAt(0)
+        var b = Number.isInteger(d) ? d : d.codePointAt(0)
         return String.fromCodePoint(sim.randInt(a, b))
       },
 
       // Public API
-      
+
       eq: (x, y) => {
-        if (x === null || x instanceof Null)
-          return y === null || y instanceof Null
-         else if (horstmann_common.isScalar(x) && horstmann_common.isScalar(y))
+        if (x === null || x instanceof Null) return y === null || y instanceof Null
+        else if (horstmann_common.isScalar(x) && horstmann_common.isScalar(y))
           return x.valueOf() === y.valueOf()
-        else if (x instanceof Ref && y instanceof Ref)
-          return x.$valueOf() === y.$valueOf()
-        else if (x instanceof Ref)
-          return x.$valueOf() === y
-        else if (y instanceof Ref)
-          return x === y.$valueOf()
-        else if (x instanceof Addr && y instanceof Addr)
-          return x.deref().$name === y.deref().$name
-        else
-          return x === y
+        else if (x instanceof Ref && y instanceof Ref) return x.$valueOf() === y.$valueOf()
+        else if (x instanceof Ref) return x.$valueOf() === y
+        else if (y instanceof Ref) return x === y.$valueOf()
+        else if (x instanceof Addr && y instanceof Addr) return x.deref().$name === y.deref().$name
+        else return x === y
       },
 
       pause: (prompt, secondary) => {
         return {
           type: 'pause',
           prompt,
-          secondary
+          secondary,
         }
       },
 
@@ -2054,7 +2078,7 @@ window.addEventListener('load', () => {
           type: 'start',
           state,
           prompt,
-          secondary
+          secondary,
         }
       },
 
@@ -2062,7 +2086,7 @@ window.addEventListener('load', () => {
         return {
           type: 'next',
           prompt,
-          secondary
+          secondary,
         }
       },
 
@@ -2072,79 +2096,87 @@ window.addEventListener('load', () => {
           prompt: prompt ?? _('od_click_button'),
           secondary,
           value: label,
-          description: `Next step: ${label}`
+          description: `Next step: ${label}`,
         }
       },
 
       // TODO: Eliminate elements and always pass value to selected
-      ask: (value, prompt, secondary) => {
-        if (value === undefined || horstmann_common.isScalar(value)) {
+      ask: (val, prompt, secondary) => {
+        let values = Array.isArray(val) ? val : [val]
+        let tests = [
+          values.map((test) => test === undefined || horstmann_common.isScalar(test)),
+          values.map((test) => test instanceof Null),
+          values.map((test) => test instanceof Addr),
+          values.map((test) => test instanceof Ref),
+          values.map((test) => test instanceof GraphEdge),
+          values.map((test) => test instanceof Node && test.$toplevel),
+        ]
+        if (tests[0].includes(true)) {
           return {
             type: 'input',
             select: true,
-            value,
+            value: values[0],
             prompt: prompt ?? _('od_enter_value'),
             secondary,
-            description: `The new value is ${value}`
+            description: `The new value is 'PLACEHOLDER'`,
           }
-        } else if (value instanceof Null) {
+        } else if (!tests[1].includes(false)) {
           tabindex(arena, 'selectable-field', 0)
           return {
             type: 'select',
-            elements: [value.$valueContainer],
-            value,
+            elements: values.map((value) => value.$valueContainer),
+            value: values[0],
             prompt: prompt ?? 'Select the location of the null pointer',
             secondary,
             done: () => tabindex(arena, 'selectable-field', -1), // ???
-            description: `TODO`
+            description: `TODO`,
           }
-        } else if (value instanceof Addr) {
+        } else if (!tests[2].includes(false)) {
           tabindex(arena, 'editable', 0)
           return {
             type: 'select',
-            elements: [value.deref().$valueContainer],
-            value,
+            elements: values.map((value) => value.deref().$valueContainer),
+            value: values[0],
             prompt: prompt ?? 'Select the pointer target.',
             secondary,
             done: () => tabindex(arena, 'editable', -1),
-            description: `TODO`
+            description: `TODO`,
           }
-        } else if (value instanceof Ref) {
+        } else if (!tests[3].includes(false)) {
           tabindex(arena, 'selectable-node', 0)
           return {
             type: 'select',
-            elements: [value.$valueOf().$element],
-            value,
+            elements: values.map((value) => value.$element),
+            value: values[0],
             prompt: prompt ?? 'Select the target.',
             secondary,
             done: () => tabindex(arena, 'selectable-node', -1),
-            description: `Selecting ${value.$valueOf().$name}`
+            description: `Selecting 'PLACEHOLDER'`,
           }
-        } else if (value instanceof GraphEdge) {
-          console.log('ask GraphEdge', value)
+        } else if (!tests[4].includes(false)) {
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
-            elements: undefined, // Can't use SVG because they move
-            value,
+            elements: values.map((value) => [value.$svg, value.$element]).flat(),
+            value: values[0],
             prompt: prompt ?? 'Select the edge.',
             secondary,
             done: () => tabindex(arena, 'selectable-edge', -1),
-            description: `Selecting ${value.$name}`
+            description: `Selecting 'PLACEHOLDER'`,
           }
-        } else if (value instanceof Node && value.$toplevel) {
+        } else if (!tests[5].includes(false)) {
           tabindex(arena, 'selectable-node', 0)
           return {
             type: 'select',
-            elements: [value.$element],
-            value,
+            elements: values.map((value) => value.$element),
+            value: values[0],
             prompt: prompt ?? 'Select the target.',
             secondary,
             done: () => tabindex(arena, 'selectable-node', -1),
-            description: `Selecting ${value.$name}`
+            description: `Selecting 'PLACEHOLDER'`,
           }
         } else {
-          alert(`Cannot ask for ${value}`)
+          alert(`Cannot ask for 'PLACEHOLDER'`)
           debugger
           return undefined
         }
@@ -2162,8 +2194,7 @@ window.addEventListener('load', () => {
           debugger
         }
 
-        if (!sim.silent)
-          tabindex(arena, 'editable', 0)
+        if (!sim.silent) tabindex(arena, 'editable', 0)
         if (horstmann_common.isScalar(rhs)) {
           return {
             type: 'input',
@@ -2173,53 +2204,50 @@ window.addEventListener('load', () => {
             element: lhs.$valueContainer,
             select: true,
             done: () => {
-              if (!sim.silent)
-                tabindex(arena, 'editable', -1)
+              if (!sim.silent) tabindex(arena, 'editable', -1)
               lhs.$assign(rhs)
             },
-            description: `Setting ${lhs.$name} to ${rhs}`
+            description: `Setting ${lhs.$name} to ${rhs}`,
           }
         } else if (rhs instanceof Addr) {
           return {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.deref().$valueContainer, // TODO pointers to fields
-            prompt: prompt ?? _('od_arrow_start_end.'), 
+            prompt: prompt ?? _('od_arrow_start_end.'),
             done: () => lhs.$assign(rhs),
-            description: `Connecting ${lhs.$name} to ${rhs.$name}`
+            description: `Connecting ${lhs.$name} to ${rhs.$name}`,
           }
         } else if (rhs instanceof Ref) {
           return {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.$valueOf().$element,
-            prompt: prompt ?? _('od_arrow_start_end'), 
+            prompt: prompt ?? _('od_arrow_start_end'),
             done: () => lhs.$assign(rhs),
-            description: `Connecting ${lhs.$name} to ${rhs.$valueOf().$name}`
+            description: `Connecting ${lhs.$name} to ${rhs.$valueOf().$name}`,
           }
         } else if (rhs.$toplevel) {
           return {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.$element,
-            prompt: prompt ?? _('od_arrow_start_end'), 
+            prompt: prompt ?? _('od_arrow_start_end'),
             done: () => lhs.$assign(rhs),
-            description: `Connecting ${lhs.$name} to ${rhs.$name}`
+            description: `Connecting ${lhs.$name} to ${rhs.$name}`,
           }
-        } else { 
+        } else {
           alert(`Cannot set ${lhs} to ${rhs}`)
           debugger
           return undefined
         }
       },
 
-      add: (gridX, gridY, node) => { 
+      add: (gridX, gridY, node) => {
         node.$toplevel = true
         if (!sim.silent) {
-          if (!('$sim' in node))
-            node.$attach?.(sim)
-          if (node instanceof NamedValuesNode) 
-            node.$element.classList.add('heap')
+          if (!('$sim' in node)) node.$attach?.(sim)
+          if (node instanceof NamedValuesNode) node.$element.classList.add('heap')
           arenaTopLevelNodes.push(node.$element)
 
           setPosition(node.$element, gridX, gridY)
@@ -2249,19 +2277,28 @@ window.addEventListener('load', () => {
         if (sim.silent) return
         for (const label of labels) {
           commonUI.addButton(label, (button) => {
-            if (currentStep === undefined || currentStep.type !== 'click' || button.classList.contains('hc-bad')) return
+            if (
+              currentStep === undefined ||
+              currentStep.type !== 'click' ||
+              button.classList.contains('hc-bad')
+            )
+              return
             if (currentStepStarted) return
             currentStepStarted = true
             if (currentStep.value === button.innerHTML.toString()) {
               button.classList.add('hc-good')
               currentStepStarted = false
               stepCompleted(true)
-              setTimeout(() => { button.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
+              setTimeout(() => {
+                button.classList.remove('hc-good')
+              }, SHOW_MARKER_DELAY)
             } else {
               button.classList.add('hc-bad')
               currentStepStarted = false
               stepCompleted(false)
-              setTimeout(() => { button.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
+              setTimeout(() => {
+                button.classList.remove('hc-bad')
+              }, SHOW_MARKER_DELAY)
             }
           })
         }
@@ -2291,7 +2328,8 @@ window.addEventListener('load', () => {
           let targetDescription = `Arrow to ${path.$valueOf().$name}`
           setTextContent(valueContainer, undefined, targetDescription)
           const target = path.$valueOf().$element
-          if (target !== undefined) { // Could be that target not yet attached
+          if (target !== undefined) {
+            // Could be that target not yet attached
             sim.addConnector(valueContainer, target, path.$drawConnector ?? drawPointer)
           }
         } else if (path instanceof Addr) {
@@ -2301,7 +2339,8 @@ window.addEventListener('load', () => {
           if (target !== undefined) {
             sim.addConnector(valueContainer, target, path.$drawConnector ?? drawPointer)
           }
-        } else if (path instanceof NamedValuesNode) { // embedded
+        } else if (path instanceof NamedValuesNode) {
+          // embedded
           // TODO More general, if '$element' in path ???
           if (!('$sim' in path)) {
             path.$attach?.(sim)
@@ -2315,7 +2354,7 @@ window.addEventListener('load', () => {
       removeConnectorsFrom: (from) => {
         if (sim.silent) return
         if (connectorsFrom.has(from)) {
-          for (const [to, data] of connectorsFrom.get(from).entries()) { 
+          for (const [to, data] of connectorsFrom.get(from).entries()) {
             data.svg.remove()
             if (data.element !== undefined) data.element.remove()
             connectorsTo.get(to).delete(from)
@@ -2361,7 +2400,7 @@ window.addEventListener('load', () => {
             const svg = data.draw(from, getBounds(to))
             connectorArena.appendChild(svg)
             tos.set(to, { ...data, svg })
-            center(data.element, from, to)          
+            center(data.element, from, to)
           }
         }
         resize()
@@ -2397,96 +2436,96 @@ window.addEventListener('load', () => {
         resize()
       },
 
-      selectable: (element, type, value) => { // value can be undefined
+      selectable: (element, type, value) => {
+        // value can be undefined
         element.classList.add('selectable-' + type)
-        element.addEventListener('click', e => {
+        element.addEventListener('click', (e) => {
           selected(element, value)
         })
-        element.addEventListener('dblclick', e => {
+        element.addEventListener('dblclick', (e) => {
           e.preventDefault()
         })
-        element.addEventListener('keydown', e => {
+        element.addEventListener('keydown', (e) => {
           if (currentStep === undefined || currentStep.type !== 'select') return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             selected(element, value)
           }
         })
       },
 
-      editable: element => {
+      editable: (element) => {
         element.classList.add('editable')
-        element.addEventListener('click', e => {
+        element.addEventListener('click', (e) => {
           if (currentStep === undefined || currentStep.type !== 'input') return
-          e.stopPropagation();
-          e.preventDefault();
+          e.stopPropagation()
+          e.preventDefault()
           editStarted(element)
         })
-        element.addEventListener('dblclick', e => {
+        element.addEventListener('dblclick', (e) => {
           if (currentStep === undefined || currentStep.type !== 'input') return
-          e.stopPropagation();
-          e.preventDefault();
+          e.stopPropagation()
+          e.preventDefault()
           editStarted(element)
         })
-        element.addEventListener('keydown', e => {
+        element.addEventListener('keydown', (e) => {
           if (currentStep === undefined || currentStep.type !== 'input') return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             editStarted(element)
           }
         })
       },
 
       connectionSource: (element, drawFunction) => {
-        element.addEventListener('keydown', function(e) {
+        element.addEventListener('keydown', function (e) {
           if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             startPointer(element, drawFunction)
           }
         })
 
-        let mousedownListener = function(e) {
+        let mousedownListener = function (e) {
           if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           e.stopPropagation()
           startPointer(element, drawFunction)
         }
         element.addEventListener('mousedown', mousedownListener)
-        element.addEventListener('touchstart', mousedownListener, {passive: true})
+        element.addEventListener('touchstart', mousedownListener, { passive: true })
 
         // If the mouse goes up where it went down, don't count the
         // event. Otherwise, it's not possible to click on the source
         // and the target separately
-        let mouseupListener = function(e) {
+        let mouseupListener = function (e) {
           if (rubberbandStarted && currentStep.source === element) {
             e.stopPropagation()
           }
         }
         element.addEventListener('mouseup', mouseupListener)
         element.addEventListener('touchend', mouseupListener)
-
       },
-      connectionTarget: element => {
-        element.addEventListener('keydown', function(e) {
+      connectionTarget: (element) => {
+        element.addEventListener('keydown', function (e) {
           if (!rubberbandStarted) return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             completePointer(element)
           }
         })
-        element.addEventListener('focus', function(e) {
+        element.addEventListener('focus', function (e) {
           if (rubberbandStarted && currentStep.source !== element) {
             repaintRubberband(getBounds(element))
           }
         })
 
-        let mouseupListener = function(e) {
+        let mouseupListener = function (e) {
           if (rubberbandStarted && currentStep.source !== element) {
             e.stopPropagation()
             completePointer(element)
@@ -2495,29 +2534,30 @@ window.addEventListener('load', () => {
         element.addEventListener('mouseup', mouseupListener)
         element.addEventListener('touchend', mouseupListener)
       },
-      draggable: node => {
-        let mousedownListener = function(e) {
-          if (dragStarted) return          
+      draggable: (node) => {
+        let mousedownListener = function (e) {
+          if (dragStarted) return
           e.stopPropagation()
           dragStarted = true
           draggedNode = node
           let targetRect = e.currentTarget.getBoundingClientRect()
-          dragOffset = { x: e.clientX - targetRect.left, y: e.clientY - targetRect.top } 
+          dragOffset = { x: e.clientX - targetRect.left, y: e.clientY - targetRect.top }
         }
         node.$element.addEventListener('mousedown', mousedownListener)
-        node.$element.addEventListener('touchstart', mousedownListener, {passive: true})      
+        node.$element.addEventListener('touchstart', mousedownListener, { passive: true })
       },
     }
 
     // Plays the remaining steps with a delay
-    const playSteps = doneAction => {
+    const playSteps = (doneAction) => {
       getNextStep()
       if (currentStep !== undefined) {
-        commonUI.instruction(null, { secondary: currentStep.description })        
+        commonUI.instruction(null, { secondary: currentStep.description })
         doStep()
-        setTimeout(() => { playSteps(doneAction) }, PLAY_STEP_DELAY)
-      }
-      else {
+        setTimeout(() => {
+          playSteps(doneAction)
+        }, PLAY_STEP_DELAY)
+      } else {
         commonUI.instruction(null, { secondary: '' })
         doneAction()
       }
@@ -2530,10 +2570,11 @@ window.addEventListener('load', () => {
       if (currentStep.type === 'select' && currentStep.elements !== undefined) {
         let element = currentStep.elements[0]
         element.classList.add('hc-good')
-        setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
+        setTimeout(() => {
+          element.classList.remove('hc-good')
+        }, PLAY_STEP_DELAY)
       }
-      if ('done' in currentStep)
-        currentStep.done()
+      if ('done' in currentStep) currentStep.done()
       tracerElement.state.lastStep = currentStepIndex
       return tracerElement.state
     }
@@ -2544,28 +2585,28 @@ window.addEventListener('load', () => {
       if (items.length > 0) connectorArena.removeChild(items[0])
 
       if (rubberbandStarted) {
-        const rubberband = rubberbandDrawFunction(to) 
-        rubberband.classList.add('rubberband') // TODO Why use classList? 
+        const rubberband = rubberbandDrawFunction(to)
+        rubberband.classList.add('rubberband') // TODO Why use classList?
         connectorArena.appendChild(rubberband)
-        resize();
+        resize()
       }
     }
 
     const initArena = () => {
-      arenaTopLevelNodes = [] 
+      arenaTopLevelNodes = []
       connectorsFrom = new Map()
       connectorsTo = new Map()
 
       let container = null
-      if (arena) { // start over
+      if (arena) {
+        // start over
         container = arena.parentNode
         arena.innerHTML = ''
         let connectorArena = arena.nextSibling
         connectorArena.innerHTML = ''
-      }
-      else {
+      } else {
         container = document.createElement('div')
-        tracerElement.appendChild(container) 
+        tracerElement.appendChild(container)
         container.classList.add('arenaContainer')
         arena = document.createElement('div')
         arena.style.position = 'absolute' // TODO in CSS? (validator)
@@ -2577,7 +2618,7 @@ window.addEventListener('load', () => {
         connectorArena.style.pointerEvents = 'none'
         container.appendChild(connectorArena)
 
-        let mousemoveListener = function(e) {
+        let mousemoveListener = function (e) {
           let outerRect = container.getBoundingClientRect()
           if (rubberbandStarted) {
             e.stopPropagation()
@@ -2585,7 +2626,7 @@ window.addEventListener('load', () => {
               x: pxToEm(e.pageX - outerRect.left - window.scrollX),
               y: pxToEm(e.pageY - outerRect.top - window.scrollY),
               width: 0,
-              height: 0
+              height: 0,
             })
           } else if (dragStarted) {
             e.stopPropagation()
@@ -2599,7 +2640,7 @@ window.addEventListener('load', () => {
         arena.addEventListener('touchmove', mousemoveListener, {passive: true})
         */
 
-        let mouseupListener = function(e) {
+        let mouseupListener = function (e) {
           if (dragStarted) {
             e.stopPropagation()
             dragStarted = false
@@ -2616,7 +2657,7 @@ window.addEventListener('load', () => {
     const prepareNextStep = () => {
       getNextStep()
       if (currentStep === undefined) {
-        commonUI.done(doneAction => {
+        commonUI.done((doneAction) => {
           initState(tracerElement.state)
           setTimeout(() => {
             playSteps(doneAction)
@@ -2642,13 +2683,13 @@ window.addEventListener('load', () => {
           editStarted(undefined)
         } else if (currentStep.select) {
           commonUI.instruction(prompt, {
-            secondary: currentStep.secondary || _('od_select_value'), 
+            secondary: currentStep.secondary || _('od_select_value'),
           })
         } else {
           commonUI.instruction(prompt, { secondary: currentStep.secondary })
-          editStarted(currentStep.element)          
+          editStarted(currentStep.element)
         }
-      } else { 
+      } else {
         commonUI.instruction(prompt, { secondary: currentStep.secondary })
       }
     }
@@ -2668,8 +2709,7 @@ window.addEventListener('load', () => {
         if (currentStep === undefined) done = true
         else {
           steps++
-          if (!['start', 'next', 'pause'].includes(currentStep.type))
-            maxscore++
+          if (!['start', 'next', 'pause'].includes(currentStep.type)) maxscore++
           else if (currentStep.type === 'start' && steps === 1) {
             startFound = true
             stateData = currentStep.state
@@ -2681,10 +2721,10 @@ window.addEventListener('load', () => {
       return { maxscore, startFound, stateData, steps }
     }
 
-    const initState = from => {
+    const initState = (from) => {
       tracerElement.state = {
         data: from === null || from === undefined ? undefined : from.data,
-        lastStep: -1
+        lastStep: -1,
       }
       let { maxscore, startFound, stateData, steps } = countSteps(tracerElement.state.data)
       tracerElement.state.data = stateData
@@ -2703,25 +2743,28 @@ window.addEventListener('load', () => {
       // vars.n = 1
       // vars.n = yield sim.ask(vars.n + 1)
       // vars.n = yield sim.ask(vars.n + 1)
-      
+
       let currentResult = undefined
       if (currentStep !== undefined) {
-        if (currentStep.value != undefined)
-          currentResult = currentStep.value
+        if (currentStep.value != undefined) currentResult = currentStep.value
         else {
           currentResult = currentStep.actual
           currentStep.actual = undefined
         }
       }
       let nextStep = stepIter.next(currentResult)
-      if (!nextStep.done &&
-          (typeof nextStep.value !== 'object' ||
-           !('type' in nextStep.value) ||
-           !['input', 'select', 'pause', 'next', 'start', 'connect', 'click'].includes(nextStep.value.type))) {
+      if (
+        !nextStep.done &&
+        (typeof nextStep.value !== 'object' ||
+          !('type' in nextStep.value) ||
+          !['input', 'select', 'pause', 'next', 'start', 'connect', 'click'].includes(
+            nextStep.value.type,
+          ))
+      ) {
         alert('Unexpected step ' + JSON.stringify(nextStep))
         debugger
       }
-      if (currentStepIndex != -1 && nextStep.value === 'start') {        
+      if (currentStepIndex != -1 && nextStep.value === 'start') {
         alert('Unexpected start ' + JSON.stringify(nextStep))
         debugger
       }
@@ -2729,7 +2772,7 @@ window.addEventListener('load', () => {
       currentStepIndex++
     }
 
-    const restoreState = state => {
+    const restoreState = (state) => {
       let maxscore = initState(state)
       if (state && (state.correct > 0 || state.errors > 0)) {
         // Play the first steps
@@ -2749,7 +2792,7 @@ window.addEventListener('load', () => {
       ...config,
       interactive: true,
       retainMarkers: [], // TODO
-      hideStart: steps === 0
+      hideStart: steps === 0,
     })
     commonUI.restore(restoreState)
     tabindex(arena, 'selectable-line', 0)
@@ -2762,13 +2805,13 @@ window.addEventListener('load', () => {
   while (elements.length < setup.length) {
     const element = document.createElement('div')
     element.classList.add('codecheck_tracer')
-    elements.push(element) 
+    elements.push(element)
     document.getElementsByTagName('body')[0].appendChild(element)
   }
   if ('SPLICE' in window) {
     if (!('horstmann_config' in window)) window.horstmann_config = {}
     window.horstmann_config.retrieve_state = (element, callback) => {
-      window.SPLICE.getState(element.id, state => callback(element, state))
+      window.SPLICE.getState(element.id, (state) => callback(element, state))
     }
     window.horstmann_config.score_change_listener = (element, state, score) => {
       window.SPLICE.reportScoreAndState(element.id, score, state)
