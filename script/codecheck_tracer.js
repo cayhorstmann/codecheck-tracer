@@ -2,6 +2,7 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-new-wrappers */
 /* eslint-disable curly */
+/* global alert, ResizeObserver */
 'use strict'
 
 /*
@@ -25,20 +26,20 @@ Note that the non-visual functionality of nodes is executed before rendering,
 to find the maximum points.
 
 Value: Anything that can be stored inside a node for display and editing. Values can be
-scalars (string, number, boolean), pointers, and embedded nodes. 
+scalars (string, number, boolean), pointers, and embedded nodes.
 
 NamedValuesNode: A node that holds named values. Subclasses must
 define $getValueContainer to return the (properly configured) "value container"
---the element containing the visual representation of the value. 
+--the element containing the visual representation of the value.
 
 Path: The location of a value that the user can edit or select. The $valueContainer
 property holds the DOM element visually containing the value. The $name property is a name for
-assistive messages. If editable, the path has an $assign method to update the value. 
+assistive messages. If editable, the path has an $assign method to update the value.
 
-They are called paths because they come from expressions of the form topLevelNode.name1.name2 
+They are called paths because they come from expressions of the form topLevelNode.name1.name2
 
 Scalar values and top-level references are wrapped into objects
-(String, Number, Boolean, Ref) so that 
+(String, Number, Boolean, Ref) so that
    (1) they can be used in expressions and
    (2) they can have $valueContainer, $name, $assign properties
 
@@ -70,22 +71,21 @@ const wrap = value => {
     return new Number(value)
   } else if (horstmann_common.isBoolean(value)) {
     return new Boolean(value)
-  } else if (value === null || typeof value === 'object' && value instanceof Null) {
+  } else if (value === null || (typeof value === 'object' && value instanceof Null)) {
     return new Null()
   } else if (typeof value !== 'object') {
     alert(`Path cannot have value ${value}`)
-    debugger
     return undefined
   } else if (value instanceof Ref) {
     return new Ref(value.$valueOf())
   } else if (value instanceof Addr) {
     return new Addr(value.deref())
-  } else if (value.$toplevel) { 
+  } else if (value.$toplevel) {
     return new Ref(value)
   } else {
     return value // TODO!!!
     // return structuredClone(value)
-  }  
+  }
 }
 
 let counters = {}
@@ -97,33 +97,35 @@ const counter = key => {
 
 const tabindex = (parent, clazz, value) => {
   if (parent === undefined) return
-  if (value == -1) return // TODO The accessibility consultant did not like making values untabbable
-  let items = parent.getElementsByClassName(clazz)
+  if (value === -1) return // TODO The accessibility consultant did not like making values untabbable
+  const items = parent.getElementsByClassName(clazz)
   for (const item of items) item.tabIndex = value
   // if (value >= 0 && items.length > 0) items[0].focus()
 }
 
+/*
 const setAriaDescription = (elem, prefix, key) => {
   if (!elem.getAttribute('aria-label'))
     elem.setAttribute('aria-label', prefix + ' ' + counter(key))
 }
+*/
 
 const setTextContent = (elem, text, ariaDescription) => {
   const NARROW_NO_BREAK_SPACE = '\u{202F}'
-  
+
   if (text === undefined || text.length === 0) text = NARROW_NO_BREAK_SPACE
   else text = '' + text
-  
+
   if (elem.classList.contains('dropHistory')) {
     elem.textContent = text
-    if (ariaDescription !== undefined) 
+    if (ariaDescription !== undefined)
       elem.setAttribute('aria-label', ariaDescription)
     else
-      elem.removeAttribute('aria-label')    
+      elem.removeAttribute('aria-label')
   } else {
     const newContent = document.createElement('span')
     newContent.textContent = text
-    if (ariaDescription !== undefined) 
+    if (ariaDescription !== undefined)
       newContent.setAttribute('aria-label', ariaDescription)
     if (elem.children.length > 0) {
       if (elem.lastChild.textContent === NARROW_NO_BREAK_SPACE)
@@ -148,7 +150,7 @@ const getBounds = e => {
   let outer = e.closest('.arenaContainer')
   const pxToEm = x => {
     const pxPerEm = parseFloat(window.getComputedStyle(outer).fontSize)
-    return x / pxPerEm / horstmann_common.getScaleFactor();
+    return x / pxPerEm / horstmann_common.getScaleFactor()
   }
   if (!outer) {
     outer = document.getElementsByClassName('arenaContainer')[0]
@@ -158,8 +160,8 @@ const getBounds = e => {
     console.log(e, 'not in arena', result)
     return result
   }
-  let outerRect = outer.getBoundingClientRect()
-  let innerRect = e.getBoundingClientRect()
+  const outerRect = outer.getBoundingClientRect()
+  const innerRect = e.getBoundingClientRect()
   return {
     x: pxToEm(innerRect.left - outerRect.left),
     y: pxToEm(innerRect.top - outerRect.top),
@@ -168,82 +170,81 @@ const getBounds = e => {
   }
 }
 
-
 // --------------------------------------------------------------------
 
 // TODO https://dragonman225.js.org/curved-arrows.html
 const drawPointer = (from, toBounds) => {
   // TODO attachments
-  const minSWidth = 0.8
   const arrowWidth = 0.4
   const attachmentHeight = 0.6
   const attachmentWidth = 0.40
   const maxCWidth = 3
   const minDelta = 2
   const maxDelta = 6
-  let fromBounds = getBounds(from)
-  let outerFromBounds = getBounds(from.parentNode.parentNode)
-  let forward = fromBounds.x + fromBounds.width <= toBounds.x
-  let x1 = fromBounds.x + fromBounds.width / 2
-  let y1 = fromBounds.y + fromBounds.height / 2
+  const fromBounds = getBounds(from)
+  const outerFromBounds = getBounds(from.parentNode.parentNode)
+  const forward = fromBounds.x + fromBounds.width <= toBounds.x
+  const x1 = fromBounds.x + fromBounds.width / 2
+  const y1 = fromBounds.y + fromBounds.height / 2
 
-  let x1outer = outerFromBounds.x + outerFromBounds.width + attachmentWidth
-  let initial = `M ${x1} ${y1} L ${x1outer} ${y1}`
-  let curve = undefined
-  let arrow = undefined
+  const x1outer = outerFromBounds.x + outerFromBounds.width + attachmentWidth
+  const initial = `M ${x1} ${y1} L ${x1outer} ${y1}`
+  let curve
+  let arrow
 
   let attachment = 1
 
-  let attachmentY = forward ? attachmentHeight :
-      attachmentHeight * 3 / 2 // So that forward/backwards arrows don't cross
+  let attachmentY = forward
+    ? attachmentHeight
+    : attachmentHeight * 3 / 2 // So that forward/backwards arrows don't cross
   // For narrow height objects, add all arrows in the middle
   if (toBounds.height < 2 * attachmentY) {
-    attachmentY = toBounds.height / 2;
-    attachment = 1;
+    attachmentY = toBounds.height / 2
+    attachment = 1
   }
 
-  let y2 = toBounds.y + attachmentY * attachment
+  const y2 = toBounds.y + attachmentY * attachment
 
   if (forward) {
     // S-shaped
-    let x2 = toBounds.x - 2 * arrowWidth
+    const x2 = toBounds.x - 2 * arrowWidth
 
-    let cp1x = x1outer + Math.abs(y2 - y1) * 0.5
-    let cp1y = y1
-    let cp2x = x2 - Math.abs(y2 - y1) * 0.5
-    let cp2y = y2
+    const cp1x = x1outer + Math.abs(y2 - y1) * 0.5
+    const cp1y = y1
+    const cp2x = x2 - Math.abs(y2 - y1) * 0.5
+    const cp2y = y2
     curve = `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 + arrowWidth} ${y2}`
     arrow = `M ${x2 + 2 * arrowWidth} ${y2} L ${x2 + arrowWidth} ${y2 - arrowWidth / 2} L ${x2 + arrowWidth} ${y2 + arrowWidth / 2} Z`
   } else if (toBounds.x + toBounds.width > fromBounds.x || y2 < outerFromBounds.y || y2 > outerFromBounds.y + outerFromBounds.height) {
     // Reverse C-shaped
-    let x2 = toBounds.x + toBounds.width + 2 * arrowWidth
-    let xmax = Math.max(x1outer, x2)
-    let xmid = xmax + Math.min(maxCWidth, Math.abs(y1 - y2) * 0.25)
-    let ymid = (y1 + y2) / 2
+    const x2 = toBounds.x + toBounds.width + 2 * arrowWidth
+    const xmax = Math.max(x1outer, x2)
+    const xmid = xmax + Math.min(maxCWidth, Math.abs(y1 - y2) * 0.25)
+    const ymid = (y1 + y2) / 2
     curve = `L ${xmax} ${y1} Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y2}, ${xmax} ${y2} L ${x2 - arrowWidth} ${y2}`
     arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
   } else {
     // Reverse C to start of outerFromBounds, then Bézier
-    let outerYmid = outerFromBounds.y + outerFromBounds.height / 2
-    let delta = minDelta + (maxDelta - minDelta) * Math.abs(y1 / outerYmid - 1)
-    let x3 = outerFromBounds.x - delta
-    let y3 = y1 > outerFromBounds.y + outerFromBounds.height / 2 ?
-        outerFromBounds.y + outerFromBounds.height + delta :
-        outerFromBounds.y - delta
-    let xmid = x1outer + Math.min(maxCWidth, Math.abs(y1 - y3) * 0.25)
-    let ymid = (y1 + y3) / 2
+    const outerYmid = outerFromBounds.y + outerFromBounds.height / 2
+    const delta = minDelta + (maxDelta - minDelta) * Math.abs(y1 / outerYmid - 1)
+    const x3 = outerFromBounds.x - delta
+    const y3 = y1 > outerFromBounds.y + outerFromBounds.height / 2
+      ? outerFromBounds.y + outerFromBounds.height + delta
+      : outerFromBounds.y - delta
+    const xmid = x1outer + Math.min(maxCWidth, Math.abs(y1 - y3) * 0.25)
+    const ymid = (y1 + y3) / 2
 
-    let x2 = toBounds.x + toBounds.width + 2 * arrowWidth
+    const x2 = toBounds.x + toBounds.width + 2 * arrowWidth
 
-    let cp1x = x3 - Math.abs(y2 - y3) * 0.5
-    let cp1y = y3
-    let cp2x = x2 + Math.abs(y2 - y3) * 0.5
-    let cp2y = y2
+    const cp1x = x3 - Math.abs(y2 - y3) * 0.5
+    const cp1y = y3
+    const cp2x = x2 + Math.abs(y2 - y3) * 0.5
+    const cp2y = y2
     curve = `Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y3}, ${x1outer} ${y3} L ${x3} ${y3} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 - arrowWidth} ${y2}`
     arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
   }
 
-  let tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+  const tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
   tempDiv.innerHTML = `<g><path d="${initial} ${curve}" stroke="black" stroke-width="0.075" fill="none"/><path d="${arrow}" fill="black"/></g>`
   return tempDiv.firstChild
 }
@@ -255,7 +256,7 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
     const w = bounds.width
     const h = bounds.height
     // compare slope dy/dx with slope h/w
-    if (dx != 0 && -h / w <= dy / dx && dy / dx <= h / w) {
+    if (dx !== 0 && -h / w <= dy / dx && dy / dx <= h / w) {
       // |dy/dx| ≤ h/w
       // intersects at left or right boundary
       if (dx > 0) {
@@ -265,17 +266,17 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
         x = bounds.x
         y -= (bounds.width / 2) * dy / dx
       }
-    } else if (dy != 0) {
+    } else if (dy !== 0) {
       // intersects at top or bottom
       if (dy > 0) {
         x += (bounds.height / 2) * dx / dy
         y = bounds.y + bounds.height
       } else {
-        x -= (bounds.height / 2) * dx / dy;
-        y = bounds.y;
+        x -= (bounds.height / 2) * dx / dy
+        y = bounds.y
       }
     }
-    return { x, y };
+    return { x, y }
   }
 
   // Center points
@@ -294,19 +295,19 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
   y1 = from.y
   x2 = to.x
   y2 = to.y
-  
-  let tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+
+  const tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 
   if (directed) {
   // Arrow tip endpoints
-    const angle = Math.atan2(dy, dx);
+    const angle = Math.atan2(dy, dx)
     const arrowWidth = 0.6
     const arrowAngle = Math.PI / 6
 
-    const x3 = x2 - arrowWidth * Math.cos(angle + arrowAngle);
-    const y3 = y2 - arrowWidth * Math.sin(angle + arrowAngle);
-    const x4 = x2 - arrowWidth * Math.cos(angle - arrowAngle);
-    const y4 = y2 - arrowWidth * Math.sin(angle - arrowAngle);
+    const x3 = x2 - arrowWidth * Math.cos(angle + arrowAngle)
+    const y3 = y2 - arrowWidth * Math.sin(angle + arrowAngle)
+    const x4 = x2 - arrowWidth * Math.cos(angle - arrowAngle)
+    const y4 = y2 - arrowWidth * Math.sin(angle - arrowAngle)
     const x5 = (x3 + x4) / 2
     const y5 = (y3 + y4) / 2
 
@@ -315,10 +316,10 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
 
     tempDiv.innerHTML = `<g><path d="${line}" stroke-width="0.2"/><path d="${arrow}"/></g>`
   } else {
-    const line = `M ${x1} ${y1} L ${x2} ${y2}`    
+    const line = `M ${x1} ${y1} L ${x2} ${y2}`
     tempDiv.innerHTML = `<g><path d="${line}" stroke-width="0.15"/></g>`
   }
-  let paths = tempDiv.firstChild.children
+  const paths = tempDiv.firstChild.children
   paths[0].style.stroke = color
   paths[0].style.fill = 'none'
   if (directed) {
@@ -358,7 +359,7 @@ export class Buttons {
     tabindex(this.$element, 'selectable-button', 0)
     return {
       type: 'select',
-      prompt: _('od_click_button'), 
+      prompt: _('od_click_button'),
       elements: [...this.$element.children].filter(b => b.innerHTML === label),
       done: () => {
         tabindex(this.$element, 'selectable-button', -1)
@@ -368,7 +369,6 @@ export class Buttons {
     }
   }
 }
-
 
 // --------------------------------------------------------------------
 
@@ -382,7 +382,7 @@ export class Code {
     this.$element.setAttribute('aria-live', 'polite')
     if (config?.pseudo)
       this.$element.classList.add('pseudo')
-    let lines = code.split('\n')
+    const lines = code.split('\n')
     this.lines = []
     // Ignore leading/trailing blank lines
     let start = 0
@@ -397,12 +397,12 @@ export class Code {
 
   $attach(sim) {
     for (let i = 0; i < this.lines.length; i++) {
-      let line = document.createElement('span')
+      const line = document.createElement('span')
       line.setAttribute('role', 'radio')
       line.innerHTML = this.lines[i]
-      //if (this.isSelectable(this.lines[i]))  // TODO XXX
-        sim.selectable(line, 'line')
-      
+      // if (this.isSelectable(this.lines[i]))  // TODO XXX
+      sim.selectable(line, 'line')
+
       this.$element.appendChild(line)
     }
     this.$sim = sim
@@ -426,14 +426,14 @@ export class Code {
   go(line) {
     line = line ?? this.nextLine()
     this.currentLine = line
-    let silent = !this.$sim || this.$sim.silent
+    const silent = !this.$sim || this.$sim.silent
     if (!silent) {
-      let items = this.$element.getElementsByClassName('hc-selected')
+      const items = this.$element.getElementsByClassName('hc-selected')
       for (let i = items.length - 1; i >= 0; i--) {
         items[i].setAttribute('aria-checked', false)
         items[i].classList.remove('hc-selected')
       }
-      if (1 <= line && line <= this.$element.children.length) {
+      if (line >= 1 && line <= this.$element.children.length) {
         const e = this.$element.children[line - 1]
         e.classList.add('hc-selected')
         e.setAttribute('aria-checked', true)
@@ -444,14 +444,15 @@ export class Code {
 
   ask(...lines) {
     const prompt = lines.length > 0 && typeof lines[lines.length - 1] === 'string'
-          ? lines.pop() : _('click_line_inst')
-    if (lines.length == 0) lines[0] = this.nextLine()
-    let silent = !this.$sim || this.$sim.silent
+      ? lines.pop()
+      : _('click_line_inst')
+    if (lines.length === 0) lines[0] = this.nextLine()
+    const silent = !this.$sim || this.$sim.silent
     if (!silent) {
       tabindex(this.$element, 'selectable-line', 0)
       this.$element.children[this.currentLine - 1].focus()
     }
-    
+
     return {
       type: 'select',
       elements: lines.map(line => this.$element.children[line - 1]),
@@ -463,7 +464,7 @@ export class Code {
         this.go(lines[0])
       },
       prompt,
-      description: `Moving to line ${lines[0]}`, // TODO What if there are multiple code blocks?
+      description: `Moving to line ${lines[0]}` // TODO What if there are multiple code blocks?
     }
   }
 }
@@ -534,8 +535,6 @@ export class Null {
 // --------------------------------------------------------------------
 
 class Node {
-  constructor() {
-  }
 }
 
 // --------------------------------------------------------------------
@@ -555,8 +554,8 @@ export class Ref {
           return () => target.$node
         else if (typeof key === 'symbol' || key.toString().startsWith('$'))
           return target[key]
-        else 
-          return target.$node[key]        
+        else
+          return target.$node[key]
       },
       set(target, key, value, receiver) {
         if (key.toString().startsWith('$'))
@@ -580,15 +579,14 @@ export class Ref {
 
 /**
   The address of a non-heap value (only in C style languages)
-*/ 
-export class Addr { 
+*/
+export class Addr {
   /**
    * @param path A path to a memory location
    */
   constructor(path) {
     if (!(typeof path === 'object' && '$assign' in path)) {
       alert(`Addr constructed with non-path ${path}`)
-      debugger
     }
     this.$path = path
   }
@@ -615,7 +613,7 @@ class NamedValuesNode extends Node {
 
   $attach(sim) {
     this.$sim = sim
-    this.$element.classList.add('node') 
+    this.$element.classList.add('node')
     for (const name in this.$values) {
       this.$set(name, this.$values[name])
       // calls renderValue, which recursively calls attach on embedded nodes
@@ -627,19 +625,19 @@ class NamedValuesNode extends Node {
      Called only by $set.
   */
   $path(name, value) {
-    let path = wrap(value)
+    const path = wrap(value)
 
     path.$assign = (newValue) => { this.$set(name, newValue) }
     // Don't change names of top-level objects
     if (!path.$toplevel) {
-      let pathName = this.$name ?? '' 
+      let pathName = this.$name ?? ''
       if (/^\p{L}[\p{L}\p{N}]*$/u.test(name))
         pathName = `${pathName}.${name}`
       else
         pathName = `${pathName}[${name}]`
       path.$name = pathName
     }
-    
+
     return path
   }
 
@@ -683,7 +681,7 @@ class NamedValuesNode extends Node {
      Sets a name/value. Called from $proxy.
   */
   $set(name, value) {
-    const path = this.$path(name, value)    
+    const path = this.$path(name, value)
     this.$values[name] = path
     if ('$hidden' in this && this.$hidden.includes(name)) return
     if (this.$sim !== undefined) {
@@ -724,7 +722,7 @@ class TableNode extends NamedValuesNode {
   constructor(...args) {
     super()
     let nextArg = 0
-    let title = undefined
+    let title
 
     if (args.length > nextArg && typeof args[nextArg] === 'string') {
       title = args[nextArg]
@@ -767,7 +765,7 @@ class TableNode extends NamedValuesNode {
       nameElement.classList.remove('fat')
       valueElement.classList.remove('fat')
     }
-    return valueElement.firstChild 
+    return valueElement.firstChild
   }
 
   $addRow(name) {
@@ -784,16 +782,16 @@ class TableNode extends NamedValuesNode {
     this.$element.appendChild(valueElement)
     const fieldValueSpan = document.createElement('span')
     valueElement.appendChild(fieldValueSpan)
-    if ('dropHistory' in this.$config) 
+    if ('dropHistory' in this.$config)
       fieldValueSpan.classList.add('dropHistory')
     setTextContent(fieldValueSpan, undefined, 'empty')
-    this.$attachListeners(fieldValueSpan)    
+    this.$attachListeners(fieldValueSpan)
     fieldValueSpan.setAttribute('aria-live', 'polite')
     this.$adjustTitle()
   }
 
   $deleteRow(name) {
-    if (this.$sim === undefined) return    
+    if (this.$sim === undefined) return
     // Delete from HTML
     const nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
     if (nameElement !== undefined) {
@@ -817,9 +815,9 @@ class TableNode extends NamedValuesNode {
         if (this.$config.emptyTitle || this.$config.title)
           titleElements[0].innerHTML = this.$config.emptyTitle || this.$config.title
         else
-          this.$element.removeChild(titleElements[0])        
+          this.$element.removeChild(titleElements[0])
       }
-    } else if (childCount > 0 && this.$config.title || childCount === 0 && (this.$config.emptyTitle || this.$config.title)) {
+    } else if (this.$config.title || (childCount === 0 && this.$config.emptyTitle)) {
       const title = document.createElement('div')
       title.classList.add('title')
       title.innerHTML = this.$element.children > 0
@@ -832,7 +830,7 @@ class TableNode extends NamedValuesNode {
   $attachListeners(fieldValueSpan) {
     if (this.$sim === undefined) return
     this.$sim.editable(fieldValueSpan)
-    
+
     this.$sim.connectionSource(fieldValueSpan)
     if (this.$sim.language === 'cpp') {
       this.$sim.connectionTarget(fieldValueSpan)
@@ -873,12 +871,12 @@ export class Frame extends TableNode {
     this.$element.classList.add('frame')
     // setAriaDescription(this.$element, 'Variables', 'frame')
     this.$element.setAttribute('aria-label', this.$name)
-  }  
+  }
 }
 
 // --------------------------------------------------------------------
 
-export class Arr extends TableNode  {
+export class Arr extends TableNode {
   constructor(...args) {
     super(...args)
     this.$values.length = 0
@@ -893,7 +891,7 @@ export class Arr extends TableNode  {
     // setAriaDescription(this.$element, 'Array', 'array')
     this.$element.setAttribute('aria-label', this.$name)
   }
-  
+
   $proxy() {
     const handler = {
       get(target, key, receiver) {
@@ -916,8 +914,7 @@ export class Arr extends TableNode  {
             currentLength--
             target.$delete(currentLength)
           }
-        }
-        else if (key.match(/[0-9]+/)) {
+        } else if (key.match(/[0-9]+/)) {
           const currentLength = target.$values.length
           if (currentLength <= key) {
             receiver.length = Number.parseInt(key) + 1
@@ -944,7 +941,7 @@ export class Seq extends NamedValuesNode {
       else if (Array.isArray(values)) this.$values = values
       else this.$values = [values]
     }
-    this.$hidden = ['length']    
+    this.$hidden = ['length']
     this.$name = 'Sequence ' + counter('Seq')
 
     this.$indexes = {}
@@ -984,7 +981,7 @@ export class Seq extends NamedValuesNode {
     indexRow.classList.add('index')
     this.$element.appendChild(indexRow)
     this.$addElements(this.$values.length)
-    super.$attach(sim) 
+    super.$attach(sim)
   }
 
   $addElements(n) {
@@ -1022,7 +1019,7 @@ export class Seq extends NamedValuesNode {
       indexCells[i].innerHTML = values.join('<br/>')
     }
   }
- 
+
   $proxy() {
     const handler = {
       get(target, key, receiver) {
@@ -1033,7 +1030,7 @@ export class Seq extends NamedValuesNode {
       },
       set(target, key, value, receiver) {
         if (key === 'length') {
-          let currentLength = target.$values.length
+          const currentLength = target.$values.length
           target.$values.length = value
           if (currentLength < value) {
             target.$addElements(value - currentLength)
@@ -1041,15 +1038,13 @@ export class Seq extends NamedValuesNode {
           if (currentLength > value) {
             target.$deleteElements(currentLength - value)
           }
-        }
-        else if (key.match(/[0-9]+/)) {
-          let currentLength = target.$values.length
+        } else if (key.match(/[0-9]+/)) {
+          const currentLength = target.$values.length
           if (currentLength <= key) {
             receiver.length = Number.parseInt(key) + 1
           }
           target.$set(key, value)
-        }
-        else {
+        } else {
           target[key] = value
         }
         return true
@@ -1075,22 +1070,22 @@ class MatRow extends NamedValuesNode {
     // need row indexes on left because might be ragged right
     const indexCell = document.createElement('td')
     indexCell.classList.add('index')
-    this.$element.appendChild(indexCell)        
+    this.$element.appendChild(indexCell)
 
     for (let i = 0; i < this.$values.length; i++) {
       const cell = document.createElement('td')
       cell.classList.add('dropHistory')
       this.$element.appendChild(cell)
     }
-    super.$attach(sim) 
+    super.$attach(sim)
   }
-  
+
   $getValueContainer(n, path) {
     n = n * 1 // Force string to int
     return this.$element.children[n + 1]
   }
-  
-  $proxy() { 
+
+  $proxy() {
     const handler = {
       get(target, key, receiver) {
         if (key === 'length' || key.match(/[0-9]+/))
@@ -1101,9 +1096,9 @@ class MatRow extends NamedValuesNode {
       set(target, key, value, receiver) {
         if (key === 'length')
           return false
-        else if (key.match(/[0-9]+/)) 
+        else if (key.match(/[0-9]+/))
           target.$set(key, value)
-        else 
+        else
           target[key] = value
         return true
       }
@@ -1117,7 +1112,7 @@ export class Mat {
     this.$values = []
     for (let i = 0; i < elements.length; i++) {
       const row = new MatRow(elements[i])
-      this.$values.push(row);
+      this.$values.push(row)
     }
 
     this.$rowIndexes = []
@@ -1155,7 +1150,7 @@ export class Mat {
       }
     })
     this.$name = 'Matrix ' + counter('Mat')
-    
+
     return this.$proxy()
   }
 
@@ -1224,14 +1219,15 @@ export class Mat {
 
 class GraphVertex extends TableNode {
   constructor(title) {
-    super({ title, dropHistory: true})
+    super({ title, dropHistory: true })
     this.$title = title
     this.$name = title
-    this.$hidden = ['color']    
+    this.$hidden = ['color']
     this.$color = 'lightsteelblue'
     this.$toplevel = true // Can't call in sim.add since that only happens after layout
     return this.$proxy()
   }
+
   toString() { return this.$title }
   $get(key) {
     if (key === 'color')
@@ -1239,6 +1235,7 @@ class GraphVertex extends TableNode {
     else
       return super.$get(key)
   }
+
   $set(key, value) {
     if (key === 'color') {
       this.$color = value
@@ -1249,12 +1246,14 @@ class GraphVertex extends TableNode {
       super.$set(key, value)
     }
   }
+
   $attach(sim) {
     super.$attach(sim)
     this.$element.classList.add('vertex')
     this.$element.style.background = this.$color
     sim.draggable(this)
   }
+
   static $compare = (u, v) => u.$title < v.$title ? -1 : u.$title === v.$title ? 0 : 1
 }
 
@@ -1266,17 +1265,23 @@ class GraphEdge {
     this.$value = undefined
     this.$name = `${from.$name}${to.$name}`
   }
+
   get from() { return this.$from }
+
   get to() { return this.$to }
+
   get value() {
     // TODO Return path
     return this.$value
   }
+
   set value(newValue) {
     this.$value = newValue
     // TODO update visual
   }
+
   get color() { return this.$color }
+
   set color(newColor) {
     this.$color = newColor
     if (this.$svg !== undefined) {
@@ -1288,51 +1293,52 @@ class GraphEdge {
       }
     }
   }
-  
+
   $attach(sim) {
     if (this.value === undefined) return
     const fieldValueSpan = document.createElement('span')
     fieldValueSpan.classList.add('edgevalue')
-    this.$element = fieldValueSpan    
+    this.$element = fieldValueSpan
     if (horstmann_common.isScalar(this.value)) {
       setTextContent(fieldValueSpan, this.value, 'edge value')
       fieldValueSpan.setAttribute('aria-live', 'polite')
       sim.editable(fieldValueSpan)
-    }
-    else {
+    } else {
       fieldValueSpan.appendChild(this.value.$element)
       sim.selectable(fieldValueSpan, 'field')
       this.value.$attach?.(sim)
     }
     this.$element.style.zIndex = '2'
   }
+
   static $compare = (e, f) => {
     const d = GraphVertex.$compare(e.$from, f.$from)
-    return d !== 0 ? d : GraphVertex.$compare(e.$to, f.$to)    
+    return d !== 0 ? d : GraphVertex.$compare(e.$to, f.$to)
   }
 }
 
-class GraphBase {  
+class GraphBase {
   constructor(directed) {
     this.$verts = []
     this.$edges = []
     this.$nextVertex = 'A'
     this.$directed = directed
   }
+
   vertex() {
     if (this.$sim !== undefined) {
       alert('Layout already called')
       return undefined
     }
     const v = new GraphVertex(this.$nextVertex)
-    this.$nextVertex = String.fromCodePoint(this.$nextVertex.codePointAt(0) + 1)    
+    this.$nextVertex = String.fromCodePoint(this.$nextVertex.codePointAt(0) + 1)
     this.$verts.push(v)
     this.$verts.sort(GraphVertex.$compare) // TODO binary search, also in edge?
     v.$outgoing = []
     v.$incoming = []
     return v
   }
-  
+
   edge(v, w) {
     if (this.$sim !== undefined) {
       alert('Layout already called')
@@ -1341,37 +1347,43 @@ class GraphBase {
     const e = new GraphEdge(v, w)
     this.$edges.push(e)
     this.$edges.sort(GraphEdge.$compare)
-    
+
     v.$outgoing.push(e)
     v.$outgoing.sort(GraphEdge.$compare)
 
     if (this.$directed) {
-      w.$incoming.push(e) 
+      w.$incoming.push(e)
       w.$incoming.sort(GraphEdge.$compare)
     } else {
-      w.$outgoing.push(e) 
+      w.$outgoing.push(e)
       w.$outgoing.sort(GraphEdge.$compare)
     }
     // TODO compare undirected?
     return e
   }
+
   adjacent(v) {
     return v.$outgoing.map(e => e.$to)
   }
+
   incident(v) {
     return v.$outgoing
   }
+
   findVertex(title) {
     for (const v of this.$verts)
       if (v.toString() === title.toString()) return v
     return undefined
   }
+
   verts() {
     return this.$verts
   }
+
   edges() {
     return this.$edges
   }
+
   layout(sim, x, y, width, height) { // TODO Or call this in $attach?
     if (sim.silent) return
     if (this.$sim !== undefined) {
@@ -1385,18 +1397,17 @@ class GraphBase {
     this.$y = y
     this.$width = width
     this.$height = height
-    
+
     // Fruchterman-Reingold
     // https://faculty.washington.edu/joelross/courses/archive/s13/cs261/lab/k/
 
     // these can be tweaked
-    let iterations = 100
-    let c = 1 
-    let gravity = 1.1
-    let cool = temp => temp > 1 ? temp * 0.95 : temp - 1 / iterations
+    const iterations = 100
+    const c = 1
+    const cool = temp => temp > 1 ? temp * 0.95 : temp - 1 / iterations
 
-    let area = 4
-    let k = c * Math.sqrt(area / this.$verts.length)
+    const area = 4
+    const k = c * Math.sqrt(area / this.$verts.length)
     let temp = Math.sqrt(this.$verts.length)
 
     // Start with circular layout; random might work just as well
@@ -1404,13 +1415,13 @@ class GraphBase {
     for (const v of this.$verts) {
       v.$pos = {
         x: Math.cos(j * 2 * Math.PI / this.$verts.length),
-        y: Math.sin(j * 2 * Math.PI / this.$verts.length),
+        y: Math.sin(j * 2 * Math.PI / this.$verts.length)
       }
       j++
     }
-    let step = () => {
+    const step = () => {
       // gravity is from https://editor.p5js.org/JeromePaddick/sketches/bjA_UOPip
-      for (const v of this.$verts) {        
+      for (const v of this.$verts) {
         v.$disp = { x: -v.$pos.x * 1.1, y: -v.$pos.y * 1.1 }
       }
 
@@ -1446,7 +1457,7 @@ class GraphBase {
       temp = cool(temp)
     }
 
-    let draw = () => {
+    const draw = () => {
       let xmin = Number.MAX_VALUE
       let xmax = Number.MIN_VALUE
       let ymin = Number.MAX_VALUE
@@ -1458,24 +1469,24 @@ class GraphBase {
         ymax = Math.max(ymax, v.$pos.y)
       }
 
-      let maxvertexwidth = 1 // TODO
-      let maxvertexheight = 1
-      
+      const maxvertexwidth = 1 // TODO
+      const maxvertexheight = 1
+
       for (const v of this.$verts) {
-        let x = this.$x + (this.$width - maxvertexwidth)  * (v.$pos.x - xmin) / (xmax - xmin)
-        let y = this.$y + (this.$height - maxvertexheight) * (v.$pos.y - ymin) / (ymax - ymin)
+        const x = this.$x + (this.$width - maxvertexwidth) * (v.$pos.x - xmin) / (xmax - xmin)
+        const y = this.$y + (this.$height - maxvertexheight) * (v.$pos.y - ymin) / (ymax - ymin)
         sim.add(x, y, v)
       }
       for (const e of this.$edges) {
-        if (!('$sim' in e)) 
+        if (!('$sim' in e))
           e.$attach?.(sim)
-        
-        let from = e.$from.$element
-        let to = e.$to.$element
+
+        const from = e.$from.$element
+        const to = e.$to.$element
         sim.addConnector(from, to, (f, tb) => {
           console.log('draw', e)
           e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
-          e.$svg.style.pointerEvents = 'auto' 
+          e.$svg.style.pointerEvents = 'auto'
           sim.selectable(e.$svg, 'edge', e)
           return e.$svg
         }, e.$element)
@@ -1493,30 +1504,35 @@ export class Graph extends GraphBase {
     super(false)
   }
   // TODO Unify by expressing in terms of other?
+
   findEdge(v, w) {
     for (const e of v.$outgoing) {
       if (e.$to === w || e.$from === w) return e
     }
     return undefined
   }
+
   other(e, v) {
-    return e.$from === v ? e.$to : e.$from 
+    return e.$from === v ? e.$to : e.$from
   }
 }
 
-export class Digraph extends GraphBase {  
+export class Digraph extends GraphBase {
   constructor() {
     super(true)
   }
+
   from(e) {
     return e.$from
   }
+
   to(e) {
     return e.$to
   }
+
   findEdge(v, w) {
     for (const e of v.$outgoing) {
-      if (e.$to === w) return e 
+      if (e.$to === w) return e
     }
     return undefined
   }
@@ -1540,7 +1556,7 @@ export class BinaryTreeNode extends Node {
     const svg = drawArrow({ x: fb.x + fb.width / 2, y: fb.y + fb.height / 2, width: 0, height: 0 }, tb, 'black')
     return svg
   }
-      
+
   get color() {
     return this.$color
   }
@@ -1576,7 +1592,7 @@ export class BinaryTreeNode extends Node {
     this.$left.$assign = (newValue) => { this.left = newValue }
     this.$left.$drawConnector = BinaryTreeNode.drawConnector
     this.$left.$name = `${this.$name}.left`
-      
+
     if (this.$sim !== undefined) {
       this.$left.$valueContainer = this.$element.children[1]
       if (this.$left.$sim === undefined) this.$left.$attach?.(this.$sim)
@@ -1593,7 +1609,7 @@ export class BinaryTreeNode extends Node {
     this.$right.$assign = (newValue) => { this.right = newValue }
     this.$right.$drawConnector = BinaryTreeNode.drawConnector
     this.$right.$name = `${this.$name}.right`
-    
+
     if (this.$sim !== undefined) {
       this.$right.$valueContainer = this.$element.children[2]
       if (node !== null && node.$sim === undefined) node.$attach?.(this.$sim)
@@ -1603,7 +1619,7 @@ export class BinaryTreeNode extends Node {
 
   $attach(sim) {
     this.$sim = sim
-    
+
     this.$element = document.createElement('div')
     this.$element.classList.add('treenode')
     this.$element.classList.add('node') // round corners
@@ -1617,18 +1633,18 @@ export class BinaryTreeNode extends Node {
     const leftChild = document.createElement('div')
     leftChild.classList.add('dropHistory')
     this.$element.appendChild(leftChild)
-    const rightChild = document.createElement('div')    
+    const rightChild = document.createElement('div')
     rightChild.classList.add('dropHistory')
     this.$element.appendChild(rightChild)
-    
+
     sim.editable(valueContainer)
-    sim.selectable(this.$element, 'node') 
+    sim.selectable(this.$element, 'node')
     sim.selectable(leftChild, 'field') // for Null
     sim.selectable(rightChild, 'field') // for Null
     sim.connectionSource(leftChild, BinaryTreeNode.drawConnector)
     sim.connectionSource(rightChild, BinaryTreeNode.drawConnector)
     sim.connectionTarget(this.$element)
-    
+
     sim.add(0, 0, this)
 
     this.value = this.value
@@ -1637,7 +1653,7 @@ export class BinaryTreeNode extends Node {
     this.right = this.right
   }
 
-  layout(sim, gridX, gridY) { 
+  layout(sim, gridX, gridY) {
     if (sim.silent) return undefined
     if (this.$sim === undefined) this.$attach(sim)
     const x = gridX * GRIDX_TO_EM
@@ -1650,7 +1666,7 @@ export class BinaryTreeNode extends Node {
     const right = this.$right
     this.$left = new Null()
     this.$right = new Null()
-    
+
     const nodeBounds = getBounds(this.$element)
 
     const cy = y + nodeBounds.height + YGAP
@@ -1678,7 +1694,7 @@ export class BinaryTreeNode extends Node {
     sim.dragTo(nx, y, this) // TODO Coords
     this.left = left
     this.right = right
-    
+
     return { width, height: nodeBounds.height + cheight }
   }
 
@@ -1694,35 +1710,33 @@ window.addEventListener('load', () => {
   const PLAY_STEP_DELAY = 1000
   const PAUSE_DELAY = 1000
   const SHOW_MARKER_DELAY = 1000
-  const REMOVE_X = '✘'
+  // const REMOVE_X = '✘'
 
   const initElement = (tracerElement, { algo, config }) => {
     // Element-scoped variables
-    let commonUI = undefined
 
-    let arena = undefined
-    let arenaTopLevelNodes = [] 
-    
-    let stepIter = undefined
-    let currentStepIndex = undefined
-    let currentStep = undefined
-    let currentStepStarted = undefined
-    let currentStepResult = undefined
+    let arena
+    let arenaTopLevelNodes = []
+
+    let stepIter
+    let currentStepIndex
+    let currentStep
+    let currentStepStarted
 
     let rubberbandStarted = false
-    let rubberbandDrawFunction = undefined
+    let rubberbandDrawFunction
     let connectorsFrom = new Map()
-      // maps $valueContainer/$element of start to map of $valueContainer/$element of end to { svg, draw: function to redraw }
+    // maps $valueContainer/$element of start to map of $valueContainer/$element of end to { svg, draw: function to redraw }
     let connectorsTo = new Map()
-      // maps $valueContainer/$element of end to set of $valueContainer/$element of starts
+    // maps $valueContainer/$element of end to set of $valueContainer/$element of starts
 
     let dragStarted = false
-    let draggedNode = undefined
-    let dragOffset = undefined
+    let draggedNode
+    let dragOffset
 
     const nodeResizeObserver = new ResizeObserver(entries => {
       // Recompute the connectors
-      let connectorArena = arena.nextSibling
+      const connectorArena = arena.nextSibling
       connectorArena.innerHTML = ''
       for (const [from, tos] of connectorsFrom.entries()) {
         for (const [to, data] of tos.entries()) {
@@ -1736,33 +1750,19 @@ window.addEventListener('load', () => {
       }
       resize()
     })
-    
-    // Utility functions accessed in sim
-    const str = obj => {
-      let result = obj.toString();
-      if (result === '') result = '&#160;';
-      return result;
-    }
-
-    function isNumeric(x) {
-      return !isNaN(parseFloat(x)) && isFinite(x);
-    }
-    function isString(x) {
-      return typeof x === 'string' || ((!!x && typeof x === 'object') && Object.prototype.toString.call(x) === '[object String]');
-    }
 
     /*
       Converts pixels in the object arena to em
     */
     const pxToEm = x => {
-      //let pxPerRem = parseFloat(getComputedStyle(document.documentElement).fontSize)
-      let pxPerEm = parseFloat(window.getComputedStyle(arena.parentNode).fontSize)
-      return x / pxPerEm / horstmann_common.getScaleFactor();
+    // let pxPerRem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+      const pxPerEm = parseFloat(window.getComputedStyle(arena.parentNode).fontSize)
+      return x / pxPerEm / horstmann_common.getScaleFactor()
     }
 
     const setPosition = (element, x, y) => {
       element.style.position = 'absolute'
-      element.style.left = (x * GRIDX_TO_EM) + 'em' 
+      element.style.left = (x * GRIDX_TO_EM) + 'em'
       element.style.top = (y * GRIDY_TO_EM) + 'em'
     }
 
@@ -1776,20 +1776,20 @@ window.addEventListener('load', () => {
       const x2 = toBounds.x + toBounds.width / 2
       const y2 = toBounds.y + toBounds.height / 2
       element.style.position = 'absolute'
-      element.style.left = ((x1 + x2 - elementBounds.width) / 2) + 'em' 
-      element.style.top = ((y1 + y2 - elementBounds.height) / 2) + 'em'      
+      element.style.left = ((x1 + x2 - elementBounds.width) / 2) + 'em'
+      element.style.top = ((y1 + y2 - elementBounds.height) / 2) + 'em'
     }
 
     /*
       Gets the extent of an array of elements
     */
     const getExtent = elements => {
-      let result = {
+      const result = {
         width: 0,
         height: 0
       }
       for (let i = 0; i < elements.length; i++) {
-        let bounds = getBounds(elements[i])
+        const bounds = getBounds(elements[i])
         result.width = Math.max(result.width, bounds.x + bounds.width)
         result.height = Math.max(result.height, bounds.y + bounds.height)
       }
@@ -1801,55 +1801,55 @@ window.addEventListener('load', () => {
     */
     const getSVGExtent = svg => {
       const elements = svg.children
-      let result = {
+      const result = {
         width: 0,
         height: 0
       }
       for (let i = 0; i < elements.length; i++) {
-        let bounds = elements[i].getBBox()
+        const bounds = elements[i].getBBox()
         result.width = Math.max(result.width, bounds.x + bounds.width)
         result.height = Math.max(result.height, bounds.y + bounds.height)
       }
       return result
     }
-    
+
     /*
       Resizes the arena and connectors to hold all elements.
     */
     const resize = () => {
-      let extent = getExtent(arenaTopLevelNodes)
-      let connectorArena = arena.nextSibling
-      let connectorArenaBounds = getSVGExtent(connectorArena)
-      let height = Math.max(extent.height, connectorArenaBounds.height)
-      let width = Math.max(extent.width, connectorArenaBounds.width)
-      
+      const extent = getExtent(arenaTopLevelNodes)
+      const connectorArena = arena.nextSibling
+      const connectorArenaBounds = getSVGExtent(connectorArena)
+      const height = Math.max(extent.height, connectorArenaBounds.height)
+      const width = Math.max(extent.width, connectorArenaBounds.width)
+
       connectorArena.setAttribute('viewBox', `0 0 ${width} ${height}`)
       connectorArena.style.width = width + 'em'
       connectorArena.style.height = height + 'em'
 
       arena.style.width = width + 'em'
       arena.style.height = height + 'em'
-      arena.parentNode.style.width = width + 'em' 
+      arena.parentNode.style.width = width + 'em'
       arena.parentNode.style.height = height + 'em'
     }
 
     const selected = (element, value) => { // value can be undefined
       if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
       // Ignore selections of the wrong type
-      if (element.classList.contains('selectable-node')
-          && !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
-      if (element.classList.contains('selectable-field')
-          && !(currentStep.value instanceof Null || currentStep.value instanceof Node && !currentStep.value.$toplevel)) return
-      if (element.classList.contains('selectable-edge')
-          && !(currentStep.value instanceof GraphEdge)) return
-      
+      if (element.classList.contains('selectable-node') &&
+          !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
+      if (element.classList.contains('selectable-field') &&
+          !(currentStep.value instanceof Null || (currentStep.value instanceof Node && !currentStep.value.$toplevel))) return
+      if (element.classList.contains('selectable-edge') &&
+          !(currentStep.value instanceof GraphEdge)) return
+
       if (currentStepStarted) return
       currentStepStarted = true
-      const good = currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0 || currentStep.elements === undefined && currentStep.value === value
+      const good = (currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0) || (currentStep.elements === undefined && currentStep.value === value)
       if (good) {
         // Remove old selection so that it doesn't interfere with
         // hc-good marking of new selection
-        let items = arena.getElementsByClassName('hc-selected')
+        const items = arena.getElementsByClassName('hc-selected')
         for (let i = items.length - 1; i >= 0; i--) {
           items[i].classList.remove('hc-selected')
         }
@@ -1882,11 +1882,10 @@ window.addEventListener('load', () => {
         }
       }
       commonUI.inputOver(element, (inputText, target) => {
-        let answer = currentStep.value
+        const answer = currentStep.value
         if (answer === undefined) {
           stepCompleted(true, inputText)
-        }
-        else if (horstmann_common.matches(inputText, answer)) {
+        } else if (horstmann_common.matches(inputText, answer)) {
           if (element !== undefined) {
             element.classList.add('hc-good')
             setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
@@ -1911,10 +1910,10 @@ window.addEventListener('load', () => {
         tabindex(arena, 'editable', 0)
       else
         tabindex(arena, 'selectable-node', 0)
-      
+
       rubberbandStarted = true
       rubberbandDrawFunction = to => (drawFunction ?? drawPointer)(element, to)
-      commonUI.instruction(null, { secondary: _('od_arrow_end')}, {
+      commonUI.instruction(null, { secondary: _('od_arrow_end') }, {
         removeBadMarkers: true
       })
       element.focus()
@@ -1939,7 +1938,7 @@ window.addEventListener('load', () => {
         tracerElement.state.lastStep = currentStepIndex
         commonUI.correct(tracerElement.state)
         prepareNextStep()
-      } else { 
+      } else {
         commonUI.error(tracerElement.state, doStep, {
           afterAction: prepareNextStep
         })
@@ -1948,10 +1947,10 @@ window.addEventListener('load', () => {
 
     // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript/47593316#47593316
     const mulberry32 = seed => () => {
-      var t = seed += 0x6D2B79F5;
-      t = Math.imul(t ^ t >>> 15, t | 1);
-      t ^= t + Math.imul(t ^ t >>> 7, t | 61);
-      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+      let t = seed += 0x6D2B79F5
+      t = Math.imul(t ^ t >>> 15, t | 1)
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61)
+      return ((t ^ t >>> 14) >>> 0) / 4294967296
     }
 
     let random = mulberry32((Math.random() * 4294967296) >>> 0)
@@ -1965,69 +1964,69 @@ window.addEventListener('load', () => {
       },
       randInt: (a, b) => {
         // a <= r <= b
-        return Math.floor(a + (b - a + 1) * random());
+        return Math.floor(a + (b - a + 1) * random())
       },
       randDouble: (a, b) => {
-        return a + (b - a) * random() 
+        return a + (b - a) * random()
       },
       randFloat: (a, b) => {
-        return a + (b - a) * random() 
+        return a + (b - a) * random()
       },
       randBoolean: () => {
         return random() < 0.5
       },
       randIntArray: (n, low, high) => {
-        let a = [];
+        const a = []
         for (let i = 0; i < n; i++) {
-          a.push(sim.randInt(low, high));
+          a.push(sim.randInt(low, high))
         }
-        return a;
+        return a
       },
       randDistinctInts: (n, low, high) => {
         if (n > high - low + 1) throw new Error(`Not ${n} distinct integers between ${low} and ${high}`)
-        let candidates = []
-        for (let i = low; i <= high; i++) candidates.push(i);
-        let a = [];
+        const candidates = []
+        for (let i = low; i <= high; i++) candidates.push(i)
+        const a = []
         for (let i = 0; i < n; i++) {
-          let k = sim.randInt(0, candidates.length - 1)
-          a.push(candidates[k]);
+          const k = sim.randInt(0, candidates.length - 1)
+          a.push(candidates[k])
           candidates[k] = candidates[candidates.length - 1]
           candidates.splice(k, 1)
         }
-        return a;
+        return a
       },
       randIntArray2: (r, c, low, high) => {
-        let a = [];
+        const a = []
         for (let i = 0; i < r; i++) {
-          let b = [];
+          const b = []
           for (let _j2 = 0; _j2 < c; _j2++) {
-            b.push(sim.randInt(low, high));
+            b.push(sim.randInt(low, high))
           }
-          a.push(b);
+          a.push(b)
         }
-        return a;
+        return a
       },
       randSelect: (...args) => {
-        return args[sim.randInt(0, args.length - 1)];
+        return args[sim.randInt(0, args.length - 1)]
       },
       randString: (len, a, b) => {
-        var result = ""
-        for (var i = 0; i < len; i++)
+        let result = ''
+        for (let i = 0; i < len; i++)
           result += sim.randCodePoint(a, b)
-        return result;
+        return result
       },
       randCodePoint: (c, d) => {
-        var a = Number.isInteger(c) ? c : c.codePointAt(0); 
-        var b = Number.isInteger(d) ? d : d.codePointAt(0);
+        const a = Number.isInteger(c) ? c : c.codePointAt(0)
+        const b = Number.isInteger(d) ? d : d.codePointAt(0)
         return String.fromCodePoint(sim.randInt(a, b))
       },
 
       // Public API
-      
+
       eq: (x, y) => {
         if (x === null || x instanceof Null)
           return y === null || y instanceof Null
-         else if (horstmann_common.isScalar(x) && horstmann_common.isScalar(y))
+        else if (horstmann_common.isScalar(x) && horstmann_common.isScalar(y))
           return x.valueOf() === y.valueOf()
         else if (x instanceof Ref && y instanceof Ref)
           return x.$valueOf() === y.$valueOf()
@@ -2096,7 +2095,7 @@ window.addEventListener('load', () => {
             prompt: prompt ?? 'Select the location of the null pointer',
             secondary,
             done: () => tabindex(arena, 'selectable-field', -1), // ???
-            description: `TODO`
+            description: 'TODO'
           }
         } else if (value instanceof Addr) {
           tabindex(arena, 'editable', 0)
@@ -2107,7 +2106,7 @@ window.addEventListener('load', () => {
             prompt: prompt ?? 'Select the pointer target.',
             secondary,
             done: () => tabindex(arena, 'editable', -1),
-            description: `TODO`
+            description: 'TODO'
           }
         } else if (value instanceof Ref) {
           tabindex(arena, 'selectable-node', 0)
@@ -2145,7 +2144,6 @@ window.addEventListener('load', () => {
           }
         } else {
           alert(`Cannot ask for ${value}`)
-          debugger
           return undefined
         }
       },
@@ -2159,7 +2157,6 @@ window.addEventListener('load', () => {
       set: (lhs, rhs, prompt, secondary) => {
         if (!(typeof lhs === 'object' && '$assign' in lhs)) {
           alert(`${lhs} is not a path`)
-          debugger
         }
 
         if (!sim.silent)
@@ -2184,7 +2181,7 @@ window.addEventListener('load', () => {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.deref().$valueContainer, // TODO pointers to fields
-            prompt: prompt ?? _('od_arrow_start_end.'), 
+            prompt: prompt ?? _('od_arrow_start_end.'),
             done: () => lhs.$assign(rhs),
             description: `Connecting ${lhs.$name} to ${rhs.$name}`
           }
@@ -2193,7 +2190,7 @@ window.addEventListener('load', () => {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.$valueOf().$element,
-            prompt: prompt ?? _('od_arrow_start_end'), 
+            prompt: prompt ?? _('od_arrow_start_end'),
             done: () => lhs.$assign(rhs),
             description: `Connecting ${lhs.$name} to ${rhs.$valueOf().$name}`
           }
@@ -2202,23 +2199,22 @@ window.addEventListener('load', () => {
             type: 'connect',
             source: lhs.$valueContainer,
             target: rhs.$element,
-            prompt: prompt ?? _('od_arrow_start_end'), 
+            prompt: prompt ?? _('od_arrow_start_end'),
             done: () => lhs.$assign(rhs),
             description: `Connecting ${lhs.$name} to ${rhs.$name}`
           }
-        } else { 
+        } else {
           alert(`Cannot set ${lhs} to ${rhs}`)
-          debugger
           return undefined
         }
       },
 
-      add: (gridX, gridY, node) => { 
+      add: (gridX, gridY, node) => {
         node.$toplevel = true
         if (!sim.silent) {
           if (!('$sim' in node))
             node.$attach?.(sim)
-          if (node instanceof NamedValuesNode) 
+          if (node instanceof NamedValuesNode)
             node.$element.classList.add('heap')
           arenaTopLevelNodes.push(node.$element)
 
@@ -2288,14 +2284,14 @@ window.addEventListener('load', () => {
         } else if (path instanceof Null) {
           setTextContent(valueContainer, '⏺')
         } else if (path instanceof Ref) {
-          let targetDescription = `Arrow to ${path.$valueOf().$name}`
+          const targetDescription = `Arrow to ${path.$valueOf().$name}`
           setTextContent(valueContainer, undefined, targetDescription)
           const target = path.$valueOf().$element
           if (target !== undefined) { // Could be that target not yet attached
             sim.addConnector(valueContainer, target, path.$drawConnector ?? drawPointer)
           }
         } else if (path instanceof Addr) {
-          let targetDescription = `Arrow to ${path.deref().$name}`
+          const targetDescription = `Arrow to ${path.deref().$name}`
           setTextContent(valueContainer, undefined, targetDescription)
           const target = path.deref().$valueContainer
           if (target !== undefined) {
@@ -2315,7 +2311,7 @@ window.addEventListener('load', () => {
       removeConnectorsFrom: (from) => {
         if (sim.silent) return
         if (connectorsFrom.has(from)) {
-          for (const [to, data] of connectorsFrom.get(from).entries()) { 
+          for (const [to, data] of connectorsFrom.get(from).entries()) {
             data.svg.remove()
             if (data.element !== undefined) data.element.remove()
             connectorsTo.get(to).delete(from)
@@ -2339,7 +2335,7 @@ window.addEventListener('load', () => {
       dragTo: (x, y, node) => {
         node.$element.style.left = x + 'em'
         node.$element.style.top = y + 'em'
-        let connectorArena = arena.nextSibling
+        const connectorArena = arena.nextSibling
         const from = node.$element
         const tos = connectorsFrom.get(from)
         if (tos !== undefined) {
@@ -2361,7 +2357,7 @@ window.addEventListener('load', () => {
             const svg = data.draw(from, getBounds(to))
             connectorArena.appendChild(svg)
             tos.set(to, { ...data, svg })
-            center(data.element, from, to)          
+            center(data.element, from, to)
           }
         }
         resize()
@@ -2375,7 +2371,7 @@ window.addEventListener('load', () => {
        */
       addConnector: (from, to, draw, element) => {
         if (sim.silent) return
-        let connectorArena = arena.nextSibling
+        const connectorArena = arena.nextSibling
         const svg = draw(from, getBounds(to))
         let tos = connectorsFrom.get(from)
         if (tos === undefined) {
@@ -2408,8 +2404,8 @@ window.addEventListener('load', () => {
         element.addEventListener('keydown', e => {
           if (currentStep === undefined || currentStep.type !== 'select') return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             selected(element, value)
           }
         })
@@ -2419,21 +2415,21 @@ window.addEventListener('load', () => {
         element.classList.add('editable')
         element.addEventListener('click', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
-          e.stopPropagation();
-          e.preventDefault();
+          e.stopPropagation()
+          e.preventDefault()
           editStarted(element)
         })
         element.addEventListener('dblclick', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
-          e.stopPropagation();
-          e.preventDefault();
+          e.stopPropagation()
+          e.preventDefault()
           editStarted(element)
         })
         element.addEventListener('keydown', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             editStarted(element)
           }
         })
@@ -2444,39 +2440,38 @@ window.addEventListener('load', () => {
           if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             startPointer(element, drawFunction)
           }
         })
 
-        let mousedownListener = function(e) {
+        const mousedownListener = function(e) {
           if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           e.stopPropagation()
           startPointer(element, drawFunction)
         }
         element.addEventListener('mousedown', mousedownListener)
-        element.addEventListener('touchstart', mousedownListener, {passive: true})
+        element.addEventListener('touchstart', mousedownListener, { passive: true })
 
         // If the mouse goes up where it went down, don't count the
         // event. Otherwise, it's not possible to click on the source
         // and the target separately
-        let mouseupListener = function(e) {
+        const mouseupListener = function(e) {
           if (rubberbandStarted && currentStep.source === element) {
             e.stopPropagation()
           }
         }
         element.addEventListener('mouseup', mouseupListener)
         element.addEventListener('touchend', mouseupListener)
-
       },
       connectionTarget: element => {
         element.addEventListener('keydown', function(e) {
           if (!rubberbandStarted) return
           if (e.keyCode === 32) {
-            e.stopPropagation();
-            e.preventDefault();
+            e.stopPropagation()
+            e.preventDefault()
             completePointer(element)
           }
         })
@@ -2486,7 +2481,7 @@ window.addEventListener('load', () => {
           }
         })
 
-        let mouseupListener = function(e) {
+        const mouseupListener = function(e) {
           if (rubberbandStarted && currentStep.source !== element) {
             e.stopPropagation()
             completePointer(element)
@@ -2496,28 +2491,27 @@ window.addEventListener('load', () => {
         element.addEventListener('touchend', mouseupListener)
       },
       draggable: node => {
-        let mousedownListener = function(e) {
-          if (dragStarted) return          
+        const mousedownListener = function(e) {
+          if (dragStarted) return
           e.stopPropagation()
           dragStarted = true
           draggedNode = node
-          let targetRect = e.currentTarget.getBoundingClientRect()
-          dragOffset = { x: e.clientX - targetRect.left, y: e.clientY - targetRect.top } 
+          const targetRect = e.currentTarget.getBoundingClientRect()
+          dragOffset = { x: e.clientX - targetRect.left, y: e.clientY - targetRect.top }
         }
         node.$element.addEventListener('mousedown', mousedownListener)
-        node.$element.addEventListener('touchstart', mousedownListener, {passive: true})      
-      },
+        node.$element.addEventListener('touchstart', mousedownListener, { passive: true })
+      }
     }
 
     // Plays the remaining steps with a delay
     const playSteps = doneAction => {
       getNextStep()
       if (currentStep !== undefined) {
-        commonUI.instruction(null, { secondary: currentStep.description })        
+        commonUI.instruction(null, { secondary: currentStep.description })
         doStep()
         setTimeout(() => { playSteps(doneAction) }, PLAY_STEP_DELAY)
-      }
-      else {
+      } else {
         commonUI.instruction(null, { secondary: '' })
         doneAction()
       }
@@ -2528,7 +2522,7 @@ window.addEventListener('load', () => {
     */
     const doStep = () => {
       if (currentStep.type === 'select' && currentStep.elements !== undefined) {
-        let element = currentStep.elements[0]
+        const element = currentStep.elements[0]
         element.classList.add('hc-good')
         setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
       }
@@ -2544,15 +2538,15 @@ window.addEventListener('load', () => {
       if (items.length > 0) connectorArena.removeChild(items[0])
 
       if (rubberbandStarted) {
-        const rubberband = rubberbandDrawFunction(to) 
-        rubberband.classList.add('rubberband') // TODO Why use classList? 
+        const rubberband = rubberbandDrawFunction(to)
+        rubberband.classList.add('rubberband') // TODO Why use classList?
         connectorArena.appendChild(rubberband)
-        resize();
+        resize()
       }
     }
 
     const initArena = () => {
-      arenaTopLevelNodes = [] 
+      arenaTopLevelNodes = []
       connectorsFrom = new Map()
       connectorsTo = new Map()
 
@@ -2560,25 +2554,24 @@ window.addEventListener('load', () => {
       if (arena) { // start over
         container = arena.parentNode
         arena.innerHTML = ''
-        let connectorArena = arena.nextSibling
+        const connectorArena = arena.nextSibling
         connectorArena.innerHTML = ''
-      }
-      else {
+      } else {
         container = document.createElement('div')
-        tracerElement.appendChild(container) 
+        tracerElement.appendChild(container)
         container.classList.add('arenaContainer')
         arena = document.createElement('div')
         arena.style.position = 'absolute' // TODO in CSS? (validator)
         container.appendChild(arena)
-        let connectorArena = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+        const connectorArena = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
         // svg.style.width = '100%' // Doesn't work in CSS
         // svg.style.height = '100%'
         connectorArena.style.position = 'absolute'
         connectorArena.style.pointerEvents = 'none'
         container.appendChild(connectorArena)
 
-        let mousemoveListener = function(e) {
-          let outerRect = container.getBoundingClientRect()
+        const mousemoveListener = function(e) {
+          const outerRect = container.getBoundingClientRect()
           if (rubberbandStarted) {
             e.stopPropagation()
             repaintRubberband({
@@ -2589,8 +2582,8 @@ window.addEventListener('load', () => {
             })
           } else if (dragStarted) {
             e.stopPropagation()
-            let x = pxToEm(e.pageX - outerRect.left - window.scrollX - dragOffset.x)
-            let y = pxToEm(e.pageY - outerRect.top - window.scrollY - dragOffset.y)
+            const x = pxToEm(e.pageX - outerRect.left - window.scrollX - dragOffset.x)
+            const y = pxToEm(e.pageY - outerRect.top - window.scrollY - dragOffset.y)
             sim.dragTo(x, y, draggedNode)
           }
         }
@@ -2599,7 +2592,7 @@ window.addEventListener('load', () => {
         arena.addEventListener('touchmove', mousemoveListener, {passive: true})
         */
 
-        let mouseupListener = function(e) {
+        const mouseupListener = function(e) {
           if (dragStarted) {
             e.stopPropagation()
             dragStarted = false
@@ -2631,7 +2624,7 @@ window.addEventListener('load', () => {
           nextAction: () => {
             doStep()
             prepareNextStep()
-          },
+          }
         })
       } else if (currentStep.type === 'pause') {
         commonUI.instruction(prompt, { secondary: currentStep.secondary })
@@ -2642,13 +2635,13 @@ window.addEventListener('load', () => {
           editStarted(undefined)
         } else if (currentStep.select) {
           commonUI.instruction(prompt, {
-            secondary: currentStep.secondary || _('od_select_value'), 
+            secondary: currentStep.secondary || _('od_select_value')
           })
         } else {
           commonUI.instruction(prompt, { secondary: currentStep.secondary })
-          editStarted(currentStep.element)          
+          editStarted(currentStep.element)
         }
-      } else { 
+      } else {
         commonUI.instruction(prompt, { secondary: currentStep.secondary })
       }
     }
@@ -2686,7 +2679,7 @@ window.addEventListener('load', () => {
         data: from === null || from === undefined ? undefined : from.data,
         lastStep: -1
       }
-      let { maxscore, startFound, stateData, steps } = countSteps(tracerElement.state.data)
+      const { maxscore, startFound, stateData, steps } = countSteps(tracerElement.state.data)
       tracerElement.state.data = stateData
       initArena()
       counters = {}
@@ -2703,34 +2696,32 @@ window.addEventListener('load', () => {
       // vars.n = 1
       // vars.n = yield sim.ask(vars.n + 1)
       // vars.n = yield sim.ask(vars.n + 1)
-      
-      let currentResult = undefined
+
+      let currentResult
       if (currentStep !== undefined) {
-        if (currentStep.value != undefined)
+        if (currentStep.value !== undefined)
           currentResult = currentStep.value
         else {
           currentResult = currentStep.actual
           currentStep.actual = undefined
         }
       }
-      let nextStep = stepIter.next(currentResult)
+      const nextStep = stepIter.next(currentResult)
       if (!nextStep.done &&
           (typeof nextStep.value !== 'object' ||
            !('type' in nextStep.value) ||
            !['input', 'select', 'pause', 'next', 'start', 'connect', 'click'].includes(nextStep.value.type))) {
         alert('Unexpected step ' + JSON.stringify(nextStep))
-        debugger
       }
-      if (currentStepIndex != -1 && nextStep.value === 'start') {        
+      if (currentStepIndex !== -1 && nextStep.value === 'start') {
         alert('Unexpected start ' + JSON.stringify(nextStep))
-        debugger
       }
       currentStep = nextStep.done ? undefined : nextStep.value
       currentStepIndex++
     }
 
     const restoreState = state => {
-      let maxscore = initState(state)
+      const maxscore = initState(state)
       if (state && (state.correct > 0 || state.errors > 0)) {
         // Play the first steps
         while (currentStepIndex < state.lastStep) {
@@ -2743,9 +2734,9 @@ window.addEventListener('load', () => {
     }
 
     // Start of initElement
-    let { steps } = countSteps(undefined)
+    const { steps } = countSteps(undefined)
 
-    commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
+    const commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
       ...config,
       interactive: true,
       retainMarkers: [], // TODO
@@ -2762,7 +2753,7 @@ window.addEventListener('load', () => {
   while (elements.length < setup.length) {
     const element = document.createElement('div')
     element.classList.add('codecheck_tracer')
-    elements.push(element) 
+    elements.push(element)
     document.getElementsByTagName('body')[0].appendChild(element)
   }
   if ('SPLICE' in window) {
