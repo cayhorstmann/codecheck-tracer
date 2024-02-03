@@ -163,7 +163,6 @@ const getBounds = (e) => {
     outer.appendChild(e)
     const result = { x: 0, y: 0, width: pxToEm(e.scrollWidth), height: 0 }
     outer.removeChild(e)
-    console.log(e, 'not in arena', result)
     return result
   }
   const outerRect = outer.getBoundingClientRect()
@@ -1517,7 +1516,6 @@ class GraphBase {
           from,
           to,
           (f, tb) => {
-            console.log('draw', e)
             e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
             e.$svg.style.pointerEvents = 'auto'
             sim.selectable(e.$svg, 'edge', e)
@@ -2187,9 +2185,7 @@ window.addEventListener('load', () => {
       ask: (val, prompt, secondary) => {
         const values = Array.isArray(val) ? val : [val]
         const tests = [
-          values.map(
-            (test) => test === undefined || horstmann_common.isScalar(test)
-          ),
+          values.map((test) => test === undefined || horstmann_common.isScalar(test)),
           values.map((test) => test instanceof Null),
           values.map((test) => test instanceof Addr),
           values.map((test) => test instanceof Ref),
