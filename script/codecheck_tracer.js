@@ -2081,8 +2081,8 @@ window.addEventListener('load', () => {
       },
 
       // TODO: Eliminate elements and always pass value to selected
-      ask: (vals, prompt, secondary) => {
-        const values = Array.isArray(vals) ? vals : [vals]
+      ask: (val, prompt, secondary) => {
+        const values = Array.isArray(val) ? val : [val]
         const tests = [
           values.map((test) => test === undefined || horstmann_common.isScalar(test)),
           values.map((test) => test instanceof Null),
@@ -2157,8 +2157,8 @@ window.addEventListener('load', () => {
             description: `Selecting ${values[0].$name}`
           }
         } else {
-          alert(`Cannot ask for ${values[0]}`) // eslint-disable-line
-          debugger // eslint-disable-line
+          alert(`Cannot ask for ${values[0]}`)
+          debugger
           return undefined
         }
       },
