@@ -2,6 +2,7 @@
 /* eslint-disable camelcase */
 /* eslint-disable no-new-wrappers */
 /* eslint-disable curly */
+/* global alert, ResizeObserver */
 'use strict'
 
 /*
@@ -55,15 +56,13 @@ import { horstmann_common, _ } from './horstmann_common.mjs'
 
 const setup = []
 
-export const addExercise = (algo, config) => {
-  setup.push({ algo, config })
-}
+export const addExercise = (algo, config) => { setup.push({ algo, config }) }
 
 /*
   Wraps a primitive value in an object or clones an object, so that
   path properties and methods can be attached.
 */
-const wrap = (value) => {
+const wrap = value => {
   if (value === undefined) {
     return new String('')
   } else if (horstmann_common.isString(value)) {
@@ -72,14 +71,10 @@ const wrap = (value) => {
     return new Number(value)
   } else if (horstmann_common.isBoolean(value)) {
     return new Boolean(value)
-  } else if (
-    value === null ||
-    (typeof value === 'object' && value instanceof Null)
-  ) {
+  } else if (value === null || (typeof value === 'object' && value instanceof Null)) {
     return new Null()
   } else if (typeof value !== 'object') {
-    alert(`Path cannot have value ${value}`) // eslint-disable-line
-    debugger // eslint-disable-line
+    alert(`Path cannot have value ${value}`)
     return undefined
   } else if (value instanceof Ref) {
     return new Ref(value.$valueOf())
@@ -95,7 +90,7 @@ const wrap = (value) => {
 
 let counters = {}
 
-const counter = (key) => {
+const counter = key => {
   counters[key] = key in counters ? counters[key] + 1 : 1
   return counters[key]
 }
@@ -108,11 +103,12 @@ const tabindex = (parent, clazz, value) => {
   // if (value >= 0 && items.length > 0) items[0].focus()
 }
 
+/*
 const setAriaDescription = (elem, prefix, key) => {
-  // eslint-disable-line
   if (!elem.getAttribute('aria-label'))
     elem.setAttribute('aria-label', prefix + ' ' + counter(key))
 }
+*/
 
 const setTextContent = (elem, text, ariaDescription) => {
   const NARROW_NO_BREAK_SPACE = '\u{202F}'
@@ -124,7 +120,8 @@ const setTextContent = (elem, text, ariaDescription) => {
     elem.textContent = text
     if (ariaDescription !== undefined)
       elem.setAttribute('aria-label', ariaDescription)
-    else elem.removeAttribute('aria-label')
+    else
+      elem.removeAttribute('aria-label')
   } else {
     const newContent = document.createElement('span')
     newContent.textContent = text
@@ -136,10 +133,7 @@ const setTextContent = (elem, text, ariaDescription) => {
       else {
         elem.lastChild.classList.add('history')
         elem.lastChild.setAttribute('aria-label', 'previous value')
-        newContent.setAttribute(
-          'aria-label',
-          ariaDescription ?? 'current value'
-        )
+        newContent.setAttribute('aria-label', ariaDescription ?? 'current value')
       }
     }
     elem.appendChild(newContent)
@@ -152,9 +146,9 @@ const GRIDY_TO_EM = 2.75
 /*
   Gets the bounds of a DOM element in the arena in em
 */
-const getBounds = (e) => {
+const getBounds = e => {
   let outer = e.closest('.arenaContainer')
-  const pxToEm = (x) => {
+  const pxToEm = x => {
     const pxPerEm = parseFloat(window.getComputedStyle(outer).fontSize)
     return x / pxPerEm / horstmann_common.getScaleFactor()
   }
@@ -163,6 +157,7 @@ const getBounds = (e) => {
     outer.appendChild(e)
     const result = { x: 0, y: 0, width: pxToEm(e.scrollWidth), height: 0 }
     outer.removeChild(e)
+    console.log(e, 'not in arena', result)
     return result
   }
   const outerRect = outer.getBoundingClientRect()
@@ -180,10 +175,9 @@ const getBounds = (e) => {
 // TODO https://dragonman225.js.org/curved-arrows.html
 const drawPointer = (from, toBounds) => {
   // TODO attachments
-  const minSWidth = 0.8 // eslint-disable-line
   const arrowWidth = 0.4
   const attachmentHeight = 0.6
-  const attachmentWidth = 0.4
+  const attachmentWidth = 0.40
   const maxCWidth = 3
   const minDelta = 2
   const maxDelta = 6
@@ -200,7 +194,9 @@ const drawPointer = (from, toBounds) => {
 
   let attachment = 1
 
-  let attachmentY = forward ? attachmentHeight : (attachmentHeight * 3) / 2 // So that forward/backwards arrows don't cross
+  let attachmentY = forward
+    ? attachmentHeight
+    : attachmentHeight * 3 / 2 // So that forward/backwards arrows don't cross
   // For narrow height objects, add all arrows in the middle
   if (toBounds.height < 2 * attachmentY) {
     attachmentY = toBounds.height / 2
@@ -217,38 +213,24 @@ const drawPointer = (from, toBounds) => {
     const cp1y = y1
     const cp2x = x2 - Math.abs(y2 - y1) * 0.5
     const cp2y = y2
-    curve = `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${
-      x2 + arrowWidth
-    } ${y2}`
-    arrow = `M ${x2 + 2 * arrowWidth} ${y2} L ${x2 + arrowWidth} ${
-      y2 - arrowWidth / 2
-    } L ${x2 + arrowWidth} ${y2 + arrowWidth / 2} Z`
-  } else if (
-    toBounds.x + toBounds.width > fromBounds.x ||
-    y2 < outerFromBounds.y ||
-    y2 > outerFromBounds.y + outerFromBounds.height
-  ) {
+    curve = `C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 + arrowWidth} ${y2}`
+    arrow = `M ${x2 + 2 * arrowWidth} ${y2} L ${x2 + arrowWidth} ${y2 - arrowWidth / 2} L ${x2 + arrowWidth} ${y2 + arrowWidth / 2} Z`
+  } else if (toBounds.x + toBounds.width > fromBounds.x || y2 < outerFromBounds.y || y2 > outerFromBounds.y + outerFromBounds.height) {
     // Reverse C-shaped
     const x2 = toBounds.x + toBounds.width + 2 * arrowWidth
     const xmax = Math.max(x1outer, x2)
     const xmid = xmax + Math.min(maxCWidth, Math.abs(y1 - y2) * 0.25)
     const ymid = (y1 + y2) / 2
-    curve = `L ${xmax} ${y1} Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y2}, ${xmax} ${y2} L ${
-      x2 - arrowWidth
-    } ${y2}`
-    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${
-      y2 - arrowWidth / 2
-    } L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
+    curve = `L ${xmax} ${y1} Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y2}, ${xmax} ${y2} L ${x2 - arrowWidth} ${y2}`
+    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
   } else {
     // Reverse C to start of outerFromBounds, then Bézier
     const outerYmid = outerFromBounds.y + outerFromBounds.height / 2
-    const delta =
-      minDelta + (maxDelta - minDelta) * Math.abs(y1 / outerYmid - 1)
+    const delta = minDelta + (maxDelta - minDelta) * Math.abs(y1 / outerYmid - 1)
     const x3 = outerFromBounds.x - delta
-    const y3 =
-      y1 > outerFromBounds.y + outerFromBounds.height / 2
-        ? outerFromBounds.y + outerFromBounds.height + delta
-        : outerFromBounds.y - delta
+    const y3 = y1 > outerFromBounds.y + outerFromBounds.height / 2
+      ? outerFromBounds.y + outerFromBounds.height + delta
+      : outerFromBounds.y - delta
     const xmid = x1outer + Math.min(maxCWidth, Math.abs(y1 - y3) * 0.25)
     const ymid = (y1 + y3) / 2
 
@@ -258,12 +240,8 @@ const drawPointer = (from, toBounds) => {
     const cp1y = y3
     const cp2x = x2 + Math.abs(y2 - y3) * 0.5
     const cp2y = y2
-    curve = `Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y3}, ${x1outer} ${y3} L ${x3} ${y3} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${
-      x2 - arrowWidth
-    } ${y2}`
-    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${
-      y2 - arrowWidth / 2
-    } L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
+    curve = `Q ${xmid} ${y1}, ${xmid} ${ymid} Q ${xmid} ${y3}, ${x1outer} ${y3} L ${x3} ${y3} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2} L ${x2 - arrowWidth} ${y2}`
+    arrow = `M ${x2 - 2 * arrowWidth} ${y2} L ${x2 - arrowWidth} ${y2 - arrowWidth / 2} L ${x2 - arrowWidth} ${y2 + arrowWidth / 2} Z`
   }
 
   const tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
@@ -283,18 +261,18 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
       // intersects at left or right boundary
       if (dx > 0) {
         x = bounds.x + bounds.width
-        y += ((bounds.width / 2) * dy) / dx
+        y += (bounds.width / 2) * dy / dx
       } else {
         x = bounds.x
-        y -= ((bounds.width / 2) * dy) / dx
+        y -= (bounds.width / 2) * dy / dx
       }
     } else if (dy !== 0) {
       // intersects at top or bottom
       if (dy > 0) {
-        x += ((bounds.height / 2) * dx) / dy
+        x += (bounds.height / 2) * dx / dy
         y = bounds.y + bounds.height
       } else {
-        x -= ((bounds.height / 2) * dx) / dy
+        x -= (bounds.height / 2) * dx / dy
         y = bounds.y
       }
     }
@@ -321,7 +299,7 @@ const drawArrow = (fromBounds, toBounds, color, directed) => {
   const tempDiv = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
 
   if (directed) {
-    // Arrow tip endpoints
+  // Arrow tip endpoints
     const angle = Math.atan2(dy, dx)
     const arrowWidth = 0.6
     const arrowAngle = Math.PI / 6
@@ -363,7 +341,8 @@ export class Buttons {
 
   $attach(sim) {
     this.$sim = sim
-    for (const child of this.$element.children) sim.selectable(child, 'button')
+    for (const child of this.$element.children)
+      sim.selectable(child, 'button')
   }
 
   add(label, action) {
@@ -381,9 +360,7 @@ export class Buttons {
     return {
       type: 'select',
       prompt: _('od_click_button'),
-      elements: [...this.$element.children].filter(
-        (b) => b.innerHTML === label
-      ),
+      elements: [...this.$element.children].filter(b => b.innerHTML === label),
       done: () => {
         tabindex(this.$element, 'selectable-button', -1)
         this.actions[label]()
@@ -403,15 +380,19 @@ export class Code {
     this.$element.classList.add('codelines')
     this.$element.setAttribute('role', 'radiogroup')
     this.$element.setAttribute('aria-live', 'polite')
-    if (config?.pseudo) this.$element.classList.add('pseudo')
+    if (config?.pseudo)
+      this.$element.classList.add('pseudo')
     const lines = code.split('\n')
     this.lines = []
     // Ignore leading/trailing blank lines
     let start = 0
-    while (start < lines.length && lines[start].trim() === '') start++
+    while (start < lines.length && lines[start].trim() === '')
+      start++
     let end = lines.length - 1
-    while (end >= 0 && lines[end].trim() === '') end--
-    for (let i = start; i <= end; i++) this.lines.push(lines[i])
+    while (end >= 0 && lines[end].trim() === '')
+      end--
+    for (let i = start; i <= end; i++)
+      this.lines.push(lines[i])
   }
 
   $attach(sim) {
@@ -428,16 +409,14 @@ export class Code {
     this.go(1)
   }
 
-  isSelectable(line) {
-    // TODO: Allow customization
-    return !['', '{', '}', 'else', 'else:', 'else :', 'do'].includes(
-      line.trim()
-    )
+  isSelectable(line) { // TODO: Allow customization
+    return !['', '{', '}', 'else', 'else:', 'else :', 'do'].includes(line.trim())
   }
 
   nextLine() {
     for (let i = this.currentLine + 1; i <= this.lines.length; i++) {
-      if (this.isSelectable(this.lines[i - 1])) return i
+      if (this.isSelectable(this.lines[i - 1]))
+        return i
     }
     return -1
   }
@@ -464,10 +443,9 @@ export class Code {
   }
 
   ask(...lines) {
-    const prompt =
-      lines.length > 0 && typeof lines[lines.length - 1] === 'string'
-        ? lines.pop()
-        : _('click_line_inst')
+    const prompt = lines.length > 0 && typeof lines[lines.length - 1] === 'string'
+      ? lines.pop()
+      : _('click_line_inst')
     if (lines.length === 0) lines[0] = this.nextLine()
     const silent = !this.$sim || this.$sim.silent
     if (!silent) {
@@ -477,7 +455,7 @@ export class Code {
 
     return {
       type: 'select',
-      elements: lines.map((line) => this.$element.children[line - 1]),
+      elements: lines.map(line => this.$element.children[line - 1]),
       done: () => {
         if (!silent) {
           tabindex(this.$element, 'selectable-line', -1)
@@ -551,15 +529,12 @@ export class Terminal {
 // --------------------------------------------------------------------
 
 export class Null {
-  toString() {
-    return 'null'
-  } // TODO In Python it's 'None'
+  toString() { return 'null' } // TODO In Python it's 'None'
 }
 
 // --------------------------------------------------------------------
 
 class Node {
-  constructor() {} // eslint-disable-line
 }
 
 // --------------------------------------------------------------------
@@ -575,19 +550,25 @@ export class Ref {
     this.$node = node instanceof Ref ? node.$valueOf() : node
     const handler = {
       get(target, key, receiver) {
-        if (key === '$valueOf') return () => target.$node
+        if (key === '$valueOf')
+          return () => target.$node
         else if (typeof key === 'symbol' || key.toString().startsWith('$'))
           return target[key]
-        else return target.$node[key]
+        else
+          return target.$node[key]
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$')) target[key] = value
-        else target.$node[key] = value
+        if (key.toString().startsWith('$'))
+          target[key] = value
+        else
+          target.$node[key] = value
         return true
       },
       deleteProperty(target, key) {
-        if (key.toString().startsWith('$')) return delete target[key]
-        else return delete target.$node[key]
+        if (key.toString().startsWith('$'))
+          return delete target[key]
+        else
+          return delete target.$node[key]
       }
     }
     return new Proxy(this, handler)
@@ -605,8 +586,7 @@ export class Addr {
    */
   constructor(path) {
     if (!(typeof path === 'object' && '$assign' in path)) {
-      alert(`Addr constructed with non-path ${path}`) // eslint-disable-line
-      debugger // eslint-disable-line
+      alert(`Addr constructed with non-path ${path}`)
     }
     this.$path = path
   }
@@ -647,14 +627,14 @@ class NamedValuesNode extends Node {
   $path(name, value) {
     const path = wrap(value)
 
-    path.$assign = (newValue) => {
-      this.$set(name, newValue)
-    }
+    path.$assign = (newValue) => { this.$set(name, newValue) }
     // Don't change names of top-level objects
     if (!path.$toplevel) {
       let pathName = this.$name ?? ''
-      if (/^\p{L}[\p{L}\p{N}]*$/u.test(name)) pathName = `${pathName}.${name}`
-      else pathName = `${pathName}[${name}]`
+      if (/^\p{L}[\p{L}\p{N}]*$/u.test(name))
+        pathName = `${pathName}.${name}`
+      else
+        pathName = `${pathName}[${name}]`
       path.$name = pathName
     }
 
@@ -667,24 +647,24 @@ class NamedValuesNode extends Node {
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (
-          typeof key === 'symbol' ||
-          key.toString().startsWith('$') ||
-          key === 'toString'
-        )
+        if (typeof key === 'symbol' || key.toString().startsWith('$') || key === 'toString')
           return target[key]
         else {
           return target.$get(key)
         }
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$')) target[key] = value
-        else target.$set(key, value)
+        if (key.toString().startsWith('$'))
+          target[key] = value
+        else
+          target.$set(key, value)
         return true
       },
       deleteProperty(target, key) {
-        if (key.toString().startsWith('$')) return delete target[key]
-        else return target.$delete(key)
+        if (key.toString().startsWith('$'))
+          return delete target[key]
+        else
+          return target.$delete(key)
       }
     }
     return new Proxy(this, handler)
@@ -728,7 +708,8 @@ class NamedValuesNode extends Node {
     for (const name in this.$values) {
       const value = this.$values[name]
       f(name, value)
-      if (value instanceof NamedValuesNode) value.$forEachDescendant(f)
+      if (value instanceof NamedValuesNode)
+        value.$forEachDescendant(f)
     }
   }
 }
@@ -754,10 +735,7 @@ class TableNode extends NamedValuesNode {
       this.$config = {}
     }
     if (title !== undefined) this.$config.title = title
-    if (
-      this.$config.title === undefined &&
-      this.$config.emptyTitle === undefined
-    )
+    if (this.$config.title === undefined && this.$config.emptyTitle === undefined)
       this.$config.emptyTitle = '<span></span>'
   }
 
@@ -774,14 +752,10 @@ class TableNode extends NamedValuesNode {
   }
 
   $getValueContainer(name, path) {
-    let nameElement = [...this.$element.getElementsByClassName('name')].find(
-      (e) => e.textContent === '' + name
-    )
+    let nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
     if (nameElement === undefined) {
       this.$addRow(name)
-      nameElement = [...this.$element.getElementsByClassName('name')].find(
-        (e) => e.textContent === '' + name
-      )
+      nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
     }
     const valueElement = nameElement.nextSibling
     if (path instanceof NamedValuesNode) {
@@ -799,7 +773,8 @@ class TableNode extends NamedValuesNode {
     nameElement.classList.add('name')
     nameElement.textContent = name
     const names = /^[\p{L}\p{Pc}][\p{L}\p{N}\p{Pc}]*$/u // Letters, numbers (but not at the beginning), punctuation connectors
-    if (!names.test(name)) nameElement.classList.add('pseudo')
+    if (!names.test(name))
+      nameElement.classList.add('pseudo')
     nameElement.id = 'field' + counter('field')
     this.$element.appendChild(nameElement)
     const valueElement = document.createElement('div')
@@ -818,9 +793,7 @@ class TableNode extends NamedValuesNode {
   $deleteRow(name) {
     if (this.$sim === undefined) return
     // Delete from HTML
-    const nameElement = [...this.$element.getElementsByClassName('name')].find(
-      (e) => e.textContent === '' + name
-    )
+    const nameElement = [...this.$element.getElementsByClassName('name')].find(e => e.textContent === '' + name)
     if (nameElement !== undefined) {
       nameElement.nextSibling.remove()
       nameElement.remove()
@@ -830,30 +803,26 @@ class TableNode extends NamedValuesNode {
   }
 
   $adjustTitle() {
-    const titleElements = [...this.$element.children].filter((child) =>
-      child.classList.contains('title')
-    )
+    const titleElements = [...this.$element.children].filter(child => child.classList.contains('title'))
     const childCount = this.$element.children.length
     if (titleElements.length > 0) {
       if (childCount > 1) {
-        if (this.$config.title) titleElements[0].innerHTML = this.$config.title
-        else this.$element.removeChild(titleElements[0])
+        if (this.$config.title)
+          titleElements[0].innerHTML = this.$config.title
+        else
+          this.$element.removeChild(titleElements[0])
       } else {
         if (this.$config.emptyTitle || this.$config.title)
-          titleElements[0].innerHTML =
-            this.$config.emptyTitle || this.$config.title
-        else this.$element.removeChild(titleElements[0])
+          titleElements[0].innerHTML = this.$config.emptyTitle || this.$config.title
+        else
+          this.$element.removeChild(titleElements[0])
       }
-    } else if (
-      (childCount > 0 && this.$config.title) ||
-      (childCount === 0 && (this.$config.emptyTitle || this.$config.title))
-    ) {
+    } else if (this.$config.title || (childCount === 0 && this.$config.emptyTitle)) {
       const title = document.createElement('div')
       title.classList.add('title')
-      title.innerHTML =
-        this.$element.children > 0
-          ? this.$config.title
-          : this.$config.emptyTitle || this.$config.title
+      title.innerHTML = this.$element.children > 0
+        ? this.$config.title
+        : this.$config.emptyTitle || this.$config.title
       this.$element.prepend(title)
     }
   }
@@ -928,10 +897,12 @@ export class Arr extends TableNode {
       get(target, key, receiver) {
         if (typeof key === 'symbol' || key.toString().startsWith('$'))
           return target[key]
-        else return target.$get(key)
+        else
+          return target.$get(key)
       },
       set(target, key, value, receiver) {
-        if (key.toString().startsWith('$')) target[key] = value
+        if (key.toString().startsWith('$'))
+          target[key] = value
         else if (key === 'length') {
           let currentLength = target.$values.length
           target.$values.length = value
@@ -1042,7 +1013,8 @@ export class Seq extends NamedValuesNode {
     for (let i = 0; i < indexCells.length; i++) {
       const values = []
       for (const name in this.$indexes) {
-        if (this.$indexes[name] === i) values.push(name)
+        if (this.$indexes[name] === i)
+          values.push(name)
       }
       indexCells[i].innerHTML = values.join('<br/>')
     }
@@ -1051,8 +1023,10 @@ export class Seq extends NamedValuesNode {
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
-        else return target[key]
+        if (key === 'length' || key.match(/[0-9]+/))
+          return target.$values[key]
+        else
+          return target[key]
       },
       set(target, key, value, receiver) {
         if (key === 'length') {
@@ -1114,13 +1088,18 @@ class MatRow extends NamedValuesNode {
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
-        else return target[key]
+        if (key === 'length' || key.match(/[0-9]+/))
+          return target.$values[key]
+        else
+          return target[key]
       },
       set(target, key, value, receiver) {
-        if (key === 'length') return false
-        else if (key.match(/[0-9]+/)) target.$set(key, value)
-        else target[key] = value
+        if (key === 'length')
+          return false
+        else if (key.match(/[0-9]+/))
+          target.$set(key, value)
+        else
+          target[key] = value
         return true
       }
     }
@@ -1203,7 +1182,8 @@ export class Mat {
     for (let i = 0; i < rows.length - 1; i++) {
       const values = []
       for (const name in this.$rowIndexes) {
-        if (this.$rowIndexes[name] === i) values.push(name)
+        if (this.$rowIndexes[name] === i)
+          values.push(name)
       }
       rows[i].children[0].innerHTML = values.join(' ')
     }
@@ -1215,7 +1195,8 @@ export class Mat {
     for (let i = 1; i < indexCells.length; i++) {
       const values = []
       for (const name in this.$columnIndexes) {
-        if (this.$columnIndexes[name] === i - 1) values.push(name)
+        if (this.$columnIndexes[name] === i - 1)
+          values.push(name)
       }
       indexCells[i].innerHTML = values.join('<br/>')
     }
@@ -1224,8 +1205,10 @@ export class Mat {
   $proxy() {
     const handler = {
       get(target, key, receiver) {
-        if (key === 'length' || key.match(/[0-9]+/)) return target.$values[key]
-        else return target[key]
+        if (key === 'length' || key.match(/[0-9]+/))
+          return target.$values[key]
+        else
+          return target[key]
       }
     }
     return new Proxy(this, handler)
@@ -1245,13 +1228,12 @@ class GraphVertex extends TableNode {
     return this.$proxy()
   }
 
-  toString() {
-    return this.$title
-  }
-
+  toString() { return this.$title }
   $get(key) {
-    if (key === 'color') return this.$color
-    else return super.$get(key)
+    if (key === 'color')
+      return this.$color
+    else
+      return super.$get(key)
   }
 
   $set(key, value) {
@@ -1272,8 +1254,7 @@ class GraphVertex extends TableNode {
     sim.draggable(this)
   }
 
-  static $compare = (u, v) =>
-    u.$title < v.$title ? -1 : u.$title === v.$title ? 0 : 1
+  static $compare = (u, v) => u.$title < v.$title ? -1 : u.$title === v.$title ? 0 : 1
 }
 
 class GraphEdge {
@@ -1285,13 +1266,9 @@ class GraphEdge {
     this.$name = `${from.$name}${to.$name}`
   }
 
-  get from() {
-    return this.$from
-  }
+  get from() { return this.$from }
 
-  get to() {
-    return this.$to
-  }
+  get to() { return this.$to }
 
   get value() {
     // TODO Return path
@@ -1303,9 +1280,7 @@ class GraphEdge {
     // TODO update visual
   }
 
-  get color() {
-    return this.$color
-  }
+  get color() { return this.$color }
 
   set color(newColor) {
     this.$color = newColor
@@ -1352,7 +1327,7 @@ class GraphBase {
 
   vertex() {
     if (this.$sim !== undefined) {
-      alert('Layout already called') // eslint-disable-line
+      alert('Layout already called')
       return undefined
     }
     const v = new GraphVertex(this.$nextVertex)
@@ -1366,7 +1341,7 @@ class GraphBase {
 
   edge(v, w) {
     if (this.$sim !== undefined) {
-      alert('Layout already called') // eslint-disable-line
+      alert('Layout already called')
       return undefined
     }
     const e = new GraphEdge(v, w)
@@ -1388,7 +1363,7 @@ class GraphBase {
   }
 
   adjacent(v) {
-    return v.$outgoing.map((e) => e.$to)
+    return v.$outgoing.map(e => e.$to)
   }
 
   incident(v) {
@@ -1396,7 +1371,8 @@ class GraphBase {
   }
 
   findVertex(title) {
-    for (const v of this.$verts) if (v.toString() === title.toString()) return v
+    for (const v of this.$verts)
+      if (v.toString() === title.toString()) return v
     return undefined
   }
 
@@ -1408,11 +1384,10 @@ class GraphBase {
     return this.$edges
   }
 
-  layout(sim, x, y, width, height) {
-    // TODO Or call this in $attach?
+  layout(sim, x, y, width, height) { // TODO Or call this in $attach?
     if (sim.silent) return
     if (this.$sim !== undefined) {
-      alert('Layout already called') // eslint-disable-line
+      alert('Layout already called')
       return
     }
     if (this.$verts.length === 0) return
@@ -1429,8 +1404,7 @@ class GraphBase {
     // these can be tweaked
     const iterations = 100
     const c = 1
-    const gravity = 1.1 // eslint-disable-line
-    const cool = (temp) => (temp > 1 ? temp * 0.95 : temp - 1 / iterations)
+    const cool = temp => temp > 1 ? temp * 0.95 : temp - 1 / iterations
 
     const area = 4
     const k = c * Math.sqrt(area / this.$verts.length)
@@ -1440,8 +1414,8 @@ class GraphBase {
     let j = 0
     for (const v of this.$verts) {
       v.$pos = {
-        x: Math.cos((j * 2 * Math.PI) / this.$verts.length),
-        y: Math.sin((j * 2 * Math.PI) / this.$verts.length)
+        x: Math.cos(j * 2 * Math.PI / this.$verts.length),
+        y: Math.sin(j * 2 * Math.PI / this.$verts.length)
       }
       j++
     }
@@ -1457,9 +1431,9 @@ class GraphBase {
           if (u !== v) {
             const dx = v.$pos.x - u.$pos.x
             const dy = v.$pos.y - u.$pos.y
-            const len2 = Math.max(1e-8, dx * dx + dy * dy)
-            v.$disp.x += (dx * k * k) / len2
-            v.$disp.y += (dy * k * k) / len2
+            const len2 = Math.max(1E-8, dx * dx + dy * dy)
+            v.$disp.x += dx * k * k / len2
+            v.$disp.y += dy * k * k / len2
           }
         }
       }
@@ -1468,16 +1442,16 @@ class GraphBase {
         const dx = e.$to.$pos.x - e.$from.$pos.x
         const dy = e.$to.$pos.y - e.$from.$pos.y
         const len = Math.hypot(dx, dy)
-        e.$to.$disp.x -= (dx * len) / k
-        e.$to.$disp.y -= (dy * len) / k
-        e.$from.$disp.x += (dx * len) / k
-        e.$from.$disp.y += (dy * len) / k
+        e.$to.$disp.x -= dx * len / k
+        e.$to.$disp.y -= dy * len / k
+        e.$from.$disp.x += dx * len / k
+        e.$from.$disp.y += dy * len / k
       }
       // limit max displacement to temperature
       for (const v of this.$verts) {
         const len = Math.hypot(v.$disp.x, v.$disp.y)
-        v.$pos.x += (v.$disp.x * temp) / len
-        v.$pos.y += (v.$disp.y * temp) / len
+        v.$pos.x += v.$disp.x * temp / len
+        v.$pos.y += v.$disp.y * temp / len
         // Limiting to the bounding box did not work well
       }
       temp = cool(temp)
@@ -1499,34 +1473,28 @@ class GraphBase {
       const maxvertexheight = 1
 
       for (const v of this.$verts) {
-        const x =
-          this.$x +
-          ((this.$width - maxvertexwidth) * (v.$pos.x - xmin)) / (xmax - xmin)
-        const y =
-          this.$y +
-          ((this.$height - maxvertexheight) * (v.$pos.y - ymin)) / (ymax - ymin)
+        const x = this.$x + (this.$width - maxvertexwidth) * (v.$pos.x - xmin) / (xmax - xmin)
+        const y = this.$y + (this.$height - maxvertexheight) * (v.$pos.y - ymin) / (ymax - ymin)
         sim.add(x, y, v)
       }
       for (const e of this.$edges) {
-        if (!('$sim' in e)) e.$attach?.(sim)
+        if (!('$sim' in e))
+          e.$attach?.(sim)
 
         const from = e.$from.$element
         const to = e.$to.$element
-        sim.addConnector(
-          from,
-          to,
-          (f, tb) => {
-            e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
-            e.$svg.style.pointerEvents = 'auto'
-            sim.selectable(e.$svg, 'edge', e)
-            return e.$svg
-          },
-          e.$element
-        )
+        sim.addConnector(from, to, (f, tb) => {
+          // console.log('draw', e)
+          e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
+          e.$svg.style.pointerEvents = 'auto'
+          sim.selectable(e.$svg, 'edge', e)
+          return e.$svg
+        }, e.$element)
       }
     }
 
-    for (let iter = 1; iter <= iterations; iter++) step()
+    for (let iter = 1; iter <= iterations; iter++)
+      step()
     draw()
   }
 }
@@ -1535,8 +1503,8 @@ export class Graph extends GraphBase {
   constructor() {
     super(false)
   }
-
   // TODO Unify by expressing in terms of other?
+
   findEdge(v, w) {
     for (const e of v.$outgoing) {
       if (e.$to === w || e.$from === w) return e
@@ -1585,11 +1553,7 @@ export class BinaryTreeNode extends Node {
 
   static drawConnector = (f, tb) => {
     const fb = getBounds(f)
-    const svg = drawArrow(
-      { x: fb.x + fb.width / 2, y: fb.y + fb.height / 2, width: 0, height: 0 },
-      tb,
-      'black'
-    )
+    const svg = drawArrow({ x: fb.x + fb.width / 2, y: fb.y + fb.height / 2, width: 0, height: 0 }, tb, 'black')
     return svg
   }
 
@@ -1611,9 +1575,7 @@ export class BinaryTreeNode extends Node {
 
   set value(newValue) {
     this.$value = wrap(newValue)
-    this.$value.$assign = (newValue) => {
-      this.value = newValue
-    }
+    this.$value.$assign = (newValue) => { this.value = newValue }
     if (this.$sim !== undefined) {
       this.$value.$valueContainer = this.$element.children[0].children[0]
       this.$sim.renderValue(this.$value)
@@ -1626,11 +1588,8 @@ export class BinaryTreeNode extends Node {
 
   set left(node) {
     // TODO If setting to null and previously wasn't null, what happens to the arrow?
-    this.$left =
-      node === null || node instanceof Null ? new Null() : new Ref(node)
-    this.$left.$assign = (newValue) => {
-      this.left = newValue
-    }
+    this.$left = node === null || node instanceof Null ? new Null() : new Ref(node)
+    this.$left.$assign = (newValue) => { this.left = newValue }
     this.$left.$drawConnector = BinaryTreeNode.drawConnector
     this.$left.$name = `${this.$name}.left`
 
@@ -1646,11 +1605,8 @@ export class BinaryTreeNode extends Node {
   }
 
   set right(node) {
-    this.$right =
-      node === null || node instanceof Null ? new Null() : new Ref(node)
-    this.$right.$assign = (newValue) => {
-      this.right = newValue
-    }
+    this.$right = node === null || node instanceof Null ? new Null() : new Ref(node)
+    this.$right.$assign = (newValue) => { this.right = newValue }
     this.$right.$drawConnector = BinaryTreeNode.drawConnector
     this.$right.$name = `${this.$name}.right`
 
@@ -1690,11 +1646,12 @@ export class BinaryTreeNode extends Node {
     sim.connectionTarget(this.$element)
 
     sim.add(0, 0, this)
-
-    this.value = this.value // eslint-disable-line
-    this.color = this.color // eslint-disable-line
-    this.left = this.left // eslint-disable-line
-    this.right = this.right // eslint-disable-line
+    // Now set the values again so that they can be shown
+    const { value, color, left, right } = this
+    this.value = value
+    this.color = color
+    this.left = left
+    this.right = right
   }
 
   layout(sim, gridX, gridY) {
@@ -1719,9 +1676,7 @@ export class BinaryTreeNode extends Node {
     let nx
     let rx
     if (!sim.eq(left, null)) {
-      const leftBounds = left
-        .$valueOf()
-        .layout(sim, x / GRIDX_TO_EM, cy / GRIDY_TO_EM)
+      const leftBounds = left.$valueOf().layout(sim, x / GRIDX_TO_EM, cy / GRIDY_TO_EM)
       rx = x + leftBounds.width + XGAP
       nx = x + leftBounds.width + XGAP / 2 - nodeBounds.width / 2
       cheight = leftBounds.height + YGAP
@@ -1733,9 +1688,7 @@ export class BinaryTreeNode extends Node {
       width = nodeBounds.width
     }
     if (!sim.eq(right, null)) {
-      const rightBounds = right
-        .$valueOf()
-        .layout(sim, rx / GRIDX_TO_EM, cy / GRIDY_TO_EM)
+      const rightBounds = right.$valueOf().layout(sim, rx / GRIDX_TO_EM, cy / GRIDY_TO_EM)
       cheight = Math.max(cheight, rightBounds.height + YGAP)
       width += rightBounds.width - nodeBounds.width / 2 + XGAP / 2
     }
@@ -1758,11 +1711,10 @@ window.addEventListener('load', () => {
   const PLAY_STEP_DELAY = 1000
   const PAUSE_DELAY = 1000
   const SHOW_MARKER_DELAY = 1000
-  const REMOVE_X = '✘' // eslint-disable-line
+  // const REMOVE_X = '✘'
 
   const initElement = (tracerElement, { algo, config }) => {
     // Element-scoped variables
-    let commonUI // eslint-disable-line
 
     let arena
     let arenaTopLevelNodes = []
@@ -1771,7 +1723,6 @@ window.addEventListener('load', () => {
     let currentStepIndex
     let currentStep
     let currentStepStarted
-    const currentStepResult = undefined // eslint-disable-line
 
     let rubberbandStarted = false
     let rubberbandDrawFunction
@@ -1784,8 +1735,9 @@ window.addEventListener('load', () => {
     let draggedNode
     let dragOffset
 
-    const nodeResizeObserver = new ResizeObserver((entries) => {
-      // eslint-disable-line
+    let func
+
+    const nodeResizeObserver = new ResizeObserver(entries => {
       // Recompute the connectors
       const connectorArena = arena.nextSibling
       connectorArena.innerHTML = ''
@@ -1802,43 +1754,19 @@ window.addEventListener('load', () => {
       resize()
     })
 
-    // Utility functions accessed in sim
-    const str = (obj) => {
-      // eslint-disable-line
-      let result = obj.toString()
-      if (result === '') result = '&#160;'
-      return result
-    }
-
-    function isNumeric(x) {
-      // eslint-disable-line
-      return !isNaN(parseFloat(x)) && isFinite(x)
-    }
-    function isString(x) {
-      // eslint-disable-line
-      return (
-        typeof x === 'string' ||
-        (!!x &&
-          typeof x === 'object' &&
-          Object.prototype.toString.call(x) === '[object String]')
-      )
-    }
-
     /*
       Converts pixels in the object arena to em
     */
-    const pxToEm = (x) => {
-      // let pxPerRem = parseFloat(getComputedStyle(document.documentElement).fontSize)
-      const pxPerEm = parseFloat(
-        window.getComputedStyle(arena.parentNode).fontSize
-      )
+    const pxToEm = x => {
+    // let pxPerRem = parseFloat(getComputedStyle(document.documentElement).fontSize)
+      const pxPerEm = parseFloat(window.getComputedStyle(arena.parentNode).fontSize)
       return x / pxPerEm / horstmann_common.getScaleFactor()
     }
 
     const setPosition = (element, x, y) => {
       element.style.position = 'absolute'
-      element.style.left = x * GRIDX_TO_EM + 'em'
-      element.style.top = y * GRIDY_TO_EM + 'em'
+      element.style.left = (x * GRIDX_TO_EM) + 'em'
+      element.style.top = (y * GRIDY_TO_EM) + 'em'
     }
 
     const center = (element, from, to) => {
@@ -1851,14 +1779,14 @@ window.addEventListener('load', () => {
       const x2 = toBounds.x + toBounds.width / 2
       const y2 = toBounds.y + toBounds.height / 2
       element.style.position = 'absolute'
-      element.style.left = (x1 + x2 - elementBounds.width) / 2 + 'em'
-      element.style.top = (y1 + y2 - elementBounds.height) / 2 + 'em'
+      element.style.left = ((x1 + x2 - elementBounds.width) / 2) + 'em'
+      element.style.top = ((y1 + y2 - elementBounds.height) / 2) + 'em'
     }
 
     /*
       Gets the extent of an array of elements
     */
-    const getExtent = (elements) => {
+    const getExtent = elements => {
       const result = {
         width: 0,
         height: 0
@@ -1874,7 +1802,7 @@ window.addEventListener('load', () => {
     /*
       Gets the extent of an SVG of element
     */
-    const getSVGExtent = (svg) => {
+    const getSVGExtent = svg => {
       const elements = svg.children
       const result = {
         width: 0,
@@ -1908,40 +1836,19 @@ window.addEventListener('load', () => {
       arena.parentNode.style.height = height + 'em'
     }
 
-    const selected = (element, value) => {
-      // value can be undefined
-      if (
-        currentStep === undefined ||
-        currentStep.type !== 'select' ||
-        element.classList.contains('hc-bad')
-      )
-        return
+    const selected = (element, value) => { // value can be undefined
+      if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
       // Ignore selections of the wrong type
-      if (
-        element.classList.contains('selectable-node') &&
-        !(currentStep.value instanceof Ref || currentStep.value instanceof Node)
-      )
-        return
-      if (
-        element.classList.contains('selectable-field') &&
-        !(
-          currentStep.value instanceof Null ||
-          (currentStep.value instanceof Node && !currentStep.value.$toplevel)
-        )
-      )
-        return
-      if (
-        element.classList.contains('selectable-edge') &&
-        !(currentStep.value instanceof GraphEdge)
-      )
-        return
+      if (element.classList.contains('selectable-node') &&
+          !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
+      if (element.classList.contains('selectable-field') &&
+          !(currentStep.value instanceof Null || (currentStep.value instanceof Node && !currentStep.value.$toplevel))) return
+      if (element.classList.contains('selectable-edge') &&
+          !(currentStep.value instanceof GraphEdge)) return
 
       if (currentStepStarted) return
       currentStepStarted = true
-      const good =
-        (currentStep.elements !== undefined &&
-          currentStep.elements.indexOf(element) >= 0) ||
-        (currentStep.elements === undefined && currentStep.value === value)
+      const good = (currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0) || (currentStep.elements === undefined && currentStep.value === value)
       if (good) {
         // Remove old selection so that it doesn't interfere with
         // hc-good marking of new selection
@@ -1952,18 +1859,15 @@ window.addEventListener('load', () => {
 
         element.classList.add('hc-good')
         element.classList.add('hc-selected')
+        currentStep.elements.unshift(currentStep.elements.splice(currentStep.elements.indexOf(element), 1))
         currentStepStarted = false
         stepCompleted(true)
-        setTimeout(() => {
-          element.classList.remove('hc-good')
-        }, SHOW_MARKER_DELAY)
+        setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
       } else {
         element.classList.add('hc-bad')
         currentStepStarted = false
         stepCompleted(false)
-        setTimeout(() => {
-          element.classList.remove('hc-bad')
-        }, SHOW_MARKER_DELAY)
+        setTimeout(() => { element.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
       }
     }
 
@@ -1988,9 +1892,7 @@ window.addEventListener('load', () => {
         } else if (horstmann_common.matches(inputText, answer)) {
           if (element !== undefined) {
             element.classList.add('hc-good')
-            setTimeout(() => {
-              element.classList.remove('hc-good')
-            }, SHOW_MARKER_DELAY)
+            setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
           }
           stepCompleted(true, inputText)
         } else {
@@ -2010,18 +1912,14 @@ window.addEventListener('load', () => {
 
       if (currentStep.target.classList.contains('editable'))
         tabindex(arena, 'editable', 0)
-      else tabindex(arena, 'selectable-node', 0)
+      else
+        tabindex(arena, 'selectable-node', 0)
 
       rubberbandStarted = true
-      rubberbandDrawFunction = (to) =>
-        (drawFunction ?? drawPointer)(element, to)
-      commonUI.instruction(
-        null,
-        { secondary: _('od_arrow_end') },
-        {
-          removeBadMarkers: true
-        }
-      )
+      rubberbandDrawFunction = to => (drawFunction ?? drawPointer)(element, to)
+      commonUI.instruction(null, { secondary: _('od_arrow_end') }, {
+        removeBadMarkers: true
+      })
       element.focus()
     }
 
@@ -2052,19 +1950,19 @@ window.addEventListener('load', () => {
     }
 
     // https://stackoverflow.com/questions/521295/seeding-the-random-number-generator-in-javascript/47593316#47593316
-    const mulberry32 = (seed) => () => {
-      let t = (seed += 0x6d2b79f5)
-      t = Math.imul(t ^ (t >>> 15), t | 1)
-      t ^= t + Math.imul(t ^ (t >>> 7), t | 61)
-      return ((t ^ (t >>> 14)) >>> 0) / 4294967296
+    const mulberry32 = seed => () => {
+      let t = seed += 0x6D2B79F5
+      t = Math.imul(t ^ t >>> 15, t | 1)
+      t ^= t + Math.imul(t ^ t >>> 7, t | 61)
+      return ((t ^ t >>> 14) >>> 0) / 4294967296
     }
 
     let random = mulberry32((Math.random() * 4294967296) >>> 0)
 
-    const sim = {
-      // The object that is passed to the algorithm
+    const sim = { // The object that is passed to the algorithm
+      blank: () => {},
       // Utility functions
-      randSeed: (seed) => {
+      randSeed: seed => {
         if (seed === undefined) seed = Math.random()
         random = mulberry32((seed * 4294967296) >>> 0)
         return seed
@@ -2090,10 +1988,7 @@ window.addEventListener('load', () => {
         return a
       },
       randDistinctInts: (n, low, high) => {
-        if (n > high - low + 1)
-          throw new Error(
-            `Not ${n} distinct integers between ${low} and ${high}`
-          )
+        if (n > high - low + 1) throw new Error(`Not ${n} distinct integers between ${low} and ${high}`)
         const candidates = []
         for (let i = low; i <= high; i++) candidates.push(i)
         const a = []
@@ -2121,7 +2016,8 @@ window.addEventListener('load', () => {
       },
       randString: (len, a, b) => {
         let result = ''
-        for (let i = 0; i < len; i++) result += sim.randCodePoint(a, b)
+        for (let i = 0; i < len; i++)
+          result += sim.randCodePoint(a, b)
         return result
       },
       randCodePoint: (c, d) => {
@@ -2139,11 +2035,14 @@ window.addEventListener('load', () => {
           return x.valueOf() === y.valueOf()
         else if (x instanceof Ref && y instanceof Ref)
           return x.$valueOf() === y.$valueOf()
-        else if (x instanceof Ref) return x.$valueOf() === y
-        else if (y instanceof Ref) return x === y.$valueOf()
+        else if (x instanceof Ref)
+          return x.$valueOf() === y
+        else if (y instanceof Ref)
+          return x === y.$valueOf()
         else if (x instanceof Addr && y instanceof Addr)
           return x.deref().$name === y.deref().$name
-        else return x === y
+        else
+          return x === y
       },
 
       pause: (prompt, secondary) => {
@@ -2182,8 +2081,8 @@ window.addEventListener('load', () => {
       },
 
       // TODO: Eliminate elements and always pass value to selected
-      ask: (val, prompt, secondary) => {
-        const values = Array.isArray(val) ? val : [val]
+      ask: (vals, prompt, secondary) => {
+        const values = Array.isArray(vals) ? vals : [vals]
         const tests = [
           values.map((test) => test === undefined || horstmann_common.isScalar(test)),
           values.map((test) => test instanceof Null),
@@ -2239,8 +2138,7 @@ window.addEventListener('load', () => {
           return {
             type: 'select',
             elements: values
-              .map((value) => [value.$svg, value.$element])
-              .flat(),
+              .map((value) => value.$svg),
             value: values[0],
             prompt: prompt ?? 'Select the edge.',
             secondary,
@@ -2265,6 +2163,40 @@ window.addEventListener('load', () => {
         }
       },
 
+      askAll: (vals, prompt, secondary, run) => {
+        const items = Array.isArray(vals) ? vals : [vals]
+        const tests = [
+          items.map((test) => test === undefined || horstmann_common.isScalar(test)),
+          items.map((test) => test instanceof Null),
+          items.map((test) => test instanceof Addr),
+          items.map((test) => test instanceof Ref),
+          items.map((test) => test instanceof GraphEdge),
+          items.map((test) => test instanceof Node && test.$toplevel)
+        ]
+        if (!tests[4].includes(false)) {
+          func = {
+            vals,
+            end: (val, values) => {
+              const items = values.filter(value => value.$svg === val)
+              items.forEach(item => {
+                if (item?.color !== undefined) run(item) // TODO: make it so run(item) only has item.color = 'pink'
+              })
+            }
+          }
+        } else if (!tests[5].includes(false)) {
+          func = {
+            vals,
+            end: (val, values) => {
+              const items = values.filter(value => value.$element === val)
+              items.forEach(item => {
+                if (item?.color !== undefined) run(item) // TODO: make it so run(item) only has item.color = 'pink'
+              })
+            }
+          }
+        }
+        return sim.ask(vals, prompt, secondary)
+      },
+
       /**
          @param lhs a path
          @param rhs the value to be set: An Addr, heap node, or scalar (string, number, boolean)
@@ -2273,11 +2205,11 @@ window.addEventListener('load', () => {
       */
       set: (lhs, rhs, prompt, secondary) => {
         if (!(typeof lhs === 'object' && '$assign' in lhs)) {
-          alert(`${lhs} is not a path`) // eslint-disable-line
-          debugger // eslint-disable-line
+          alert(`${lhs} is not a path`)
         }
 
-        if (!sim.silent) tabindex(arena, 'editable', 0)
+        if (!sim.silent)
+          tabindex(arena, 'editable', 0)
         if (horstmann_common.isScalar(rhs)) {
           return {
             type: 'input',
@@ -2287,7 +2219,8 @@ window.addEventListener('load', () => {
             element: lhs.$valueContainer,
             select: true,
             done: () => {
-              if (!sim.silent) tabindex(arena, 'editable', -1)
+              if (!sim.silent)
+                tabindex(arena, 'editable', -1)
               lhs.$assign(rhs)
             },
             description: `Setting ${lhs.$name} to ${rhs}`
@@ -2320,8 +2253,7 @@ window.addEventListener('load', () => {
             description: `Connecting ${lhs.$name} to ${rhs.$name}`
           }
         } else {
-          alert(`Cannot set ${lhs} to ${rhs}`) // eslint-disable-line
-          debugger // eslint-disable-line
+          alert(`Cannot set ${lhs} to ${rhs}`)
           return undefined
         }
       },
@@ -2329,7 +2261,8 @@ window.addEventListener('load', () => {
       add: (gridX, gridY, node) => {
         node.$toplevel = true
         if (!sim.silent) {
-          if (!('$sim' in node)) node.$attach?.(sim)
+          if (!('$sim' in node))
+            node.$attach?.(sim)
           if (node instanceof NamedValuesNode)
             node.$element.classList.add('heap')
           arenaTopLevelNodes.push(node.$element)
@@ -2361,28 +2294,19 @@ window.addEventListener('load', () => {
         if (sim.silent) return
         for (const label of labels) {
           commonUI.addButton(label, (button) => {
-            if (
-              currentStep === undefined ||
-              currentStep.type !== 'click' ||
-              button.classList.contains('hc-bad')
-            )
-              return
+            if (currentStep === undefined || currentStep.type !== 'click' || button.classList.contains('hc-bad')) return
             if (currentStepStarted) return
             currentStepStarted = true
             if (currentStep.value === button.innerHTML.toString()) {
               button.classList.add('hc-good')
               currentStepStarted = false
               stepCompleted(true)
-              setTimeout(() => {
-                button.classList.remove('hc-good')
-              }, SHOW_MARKER_DELAY)
+              setTimeout(() => { button.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
             } else {
               button.classList.add('hc-bad')
               currentStepStarted = false
               stepCompleted(false)
-              setTimeout(() => {
-                button.classList.remove('hc-bad')
-              }, SHOW_MARKER_DELAY)
+              setTimeout(() => { button.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
             }
           })
         }
@@ -2400,9 +2324,7 @@ window.addEventListener('load', () => {
       */
       renderValue: (path) => {
         if (typeof path === 'object' && 'type' in path) {
-          console.log(
-            `Right hand side is ${JSON.stringify(path)}. Forgotten yield?`
-          )
+          console.log(`Right hand side is ${JSON.stringify(path)}. Forgotten yield?`)
         }
         const valueContainer = path.$valueContainer
         sim.removeConnectorsFrom(valueContainer)
@@ -2414,27 +2336,17 @@ window.addEventListener('load', () => {
           const targetDescription = `Arrow to ${path.$valueOf().$name}`
           setTextContent(valueContainer, undefined, targetDescription)
           const target = path.$valueOf().$element
-          if (target !== undefined) {
-            // Could be that target not yet attached
-            sim.addConnector(
-              valueContainer,
-              target,
-              path.$drawConnector ?? drawPointer
-            )
+          if (target !== undefined) { // Could be that target not yet attached
+            sim.addConnector(valueContainer, target, path.$drawConnector ?? drawPointer)
           }
         } else if (path instanceof Addr) {
           const targetDescription = `Arrow to ${path.deref().$name}`
           setTextContent(valueContainer, undefined, targetDescription)
           const target = path.deref().$valueContainer
           if (target !== undefined) {
-            sim.addConnector(
-              valueContainer,
-              target,
-              path.$drawConnector ?? drawPointer
-            )
+            sim.addConnector(valueContainer, target, path.$drawConnector ?? drawPointer)
           }
-        } else if (path instanceof NamedValuesNode) {
-          // embedded
+        } else if (path instanceof NamedValuesNode) { // embedded
           // TODO More general, if '$element' in path ???
           if (!('$sim' in path)) {
             path.$attach?.(sim)
@@ -2530,16 +2442,15 @@ window.addEventListener('load', () => {
         resize()
       },
 
-      selectable: (element, type, value) => {
-        // value can be undefined
+      selectable: (element, type, value) => { // value can be undefined
         element.classList.add('selectable-' + type)
-        element.addEventListener('click', (e) => {
+        element.addEventListener('click', e => {
           selected(element, value)
         })
-        element.addEventListener('dblclick', (e) => {
+        element.addEventListener('dblclick', e => {
           e.preventDefault()
         })
-        element.addEventListener('keydown', (e) => {
+        element.addEventListener('keydown', e => {
           if (currentStep === undefined || currentStep.type !== 'select') return
           if (e.keyCode === 32) {
             e.stopPropagation()
@@ -2549,21 +2460,21 @@ window.addEventListener('load', () => {
         })
       },
 
-      editable: (element) => {
+      editable: element => {
         element.classList.add('editable')
-        element.addEventListener('click', (e) => {
+        element.addEventListener('click', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
           e.stopPropagation()
           e.preventDefault()
           editStarted(element)
         })
-        element.addEventListener('dblclick', (e) => {
+        element.addEventListener('dblclick', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
           e.stopPropagation()
           e.preventDefault()
           editStarted(element)
         })
-        element.addEventListener('keydown', (e) => {
+        element.addEventListener('keydown', e => {
           if (currentStep === undefined || currentStep.type !== 'input') return
           if (e.keyCode === 32) {
             e.stopPropagation()
@@ -2574,9 +2485,8 @@ window.addEventListener('load', () => {
       },
 
       connectionSource: (element, drawFunction) => {
-        element.addEventListener('keydown', function (e) {
-          if (currentStep === undefined || currentStep.type !== 'connect')
-            return
+        element.addEventListener('keydown', function(e) {
+          if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           if (e.keyCode === 32) {
             e.stopPropagation()
@@ -2585,22 +2495,19 @@ window.addEventListener('load', () => {
           }
         })
 
-        const mousedownListener = function (e) {
-          if (currentStep === undefined || currentStep.type !== 'connect')
-            return
+        const mousedownListener = function(e) {
+          if (currentStep === undefined || currentStep.type !== 'connect') return
           if (rubberbandStarted) return
           e.stopPropagation()
           startPointer(element, drawFunction)
         }
         element.addEventListener('mousedown', mousedownListener)
-        element.addEventListener('touchstart', mousedownListener, {
-          passive: true
-        })
+        element.addEventListener('touchstart', mousedownListener, { passive: true })
 
         // If the mouse goes up where it went down, don't count the
         // event. Otherwise, it's not possible to click on the source
         // and the target separately
-        const mouseupListener = function (e) {
+        const mouseupListener = function(e) {
           if (rubberbandStarted && currentStep.source === element) {
             e.stopPropagation()
           }
@@ -2608,8 +2515,8 @@ window.addEventListener('load', () => {
         element.addEventListener('mouseup', mouseupListener)
         element.addEventListener('touchend', mouseupListener)
       },
-      connectionTarget: (element) => {
-        element.addEventListener('keydown', function (e) {
+      connectionTarget: element => {
+        element.addEventListener('keydown', function(e) {
           if (!rubberbandStarted) return
           if (e.keyCode === 32) {
             e.stopPropagation()
@@ -2617,13 +2524,13 @@ window.addEventListener('load', () => {
             completePointer(element)
           }
         })
-        element.addEventListener('focus', function (e) {
+        element.addEventListener('focus', function(e) {
           if (rubberbandStarted && currentStep.source !== element) {
             repaintRubberband(getBounds(element))
           }
         })
 
-        const mouseupListener = function (e) {
+        const mouseupListener = function(e) {
           if (rubberbandStarted && currentStep.source !== element) {
             e.stopPropagation()
             completePointer(element)
@@ -2632,34 +2539,40 @@ window.addEventListener('load', () => {
         element.addEventListener('mouseup', mouseupListener)
         element.addEventListener('touchend', mouseupListener)
       },
-      draggable: (node) => {
-        const mousedownListener = function (e) {
+      draggable: node => {
+        const mousedownListener = function(e) {
           if (dragStarted) return
           e.stopPropagation()
           dragStarted = true
           draggedNode = node
           const targetRect = e.currentTarget.getBoundingClientRect()
-          dragOffset = {
-            x: e.clientX - targetRect.left,
-            y: e.clientY - targetRect.top
-          }
+          dragOffset = { x: e.clientX - targetRect.left, y: e.clientY - targetRect.top }
         }
         node.$element.addEventListener('mousedown', mousedownListener)
-        node.$element.addEventListener('touchstart', mousedownListener, {
-          passive: true
-        })
+        node.$element.addEventListener('touchstart', mousedownListener, { passive: true })
       }
     }
 
+    const isAllDone = () => {
+      if (func !== undefined) {
+        const element = currentStep.elements.shift()
+        if (func !== undefined && element !== undefined) {
+          func.end(element[0], func.vals)
+        }
+        if (currentStep?.elements?.length > 0) {
+          return currentStep
+        }
+      }
+      func = undefined
+    }
+
     // Plays the remaining steps with a delay
-    const playSteps = (doneAction) => {
+    const playSteps = doneAction => {
       getNextStep()
       if (currentStep !== undefined) {
         commonUI.instruction(null, { secondary: currentStep.description })
         doStep()
-        setTimeout(() => {
-          playSteps(doneAction)
-        }, PLAY_STEP_DELAY)
+        setTimeout(() => { playSteps(doneAction) }, PLAY_STEP_DELAY)
       } else {
         commonUI.instruction(null, { secondary: '' })
         doneAction()
@@ -2673,11 +2586,10 @@ window.addEventListener('load', () => {
       if (currentStep.type === 'select' && currentStep.elements !== undefined) {
         const element = currentStep.elements[0]
         element.classList.add('hc-good')
-        setTimeout(() => {
-          element.classList.remove('hc-good')
-        }, PLAY_STEP_DELAY)
+        setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
       }
-      if ('done' in currentStep) currentStep.done()
+      if ('done' in currentStep)
+        currentStep.done()
       tracerElement.state.lastStep = currentStepIndex
       return tracerElement.state
     }
@@ -2701,8 +2613,7 @@ window.addEventListener('load', () => {
       connectorsTo = new Map()
 
       let container = null
-      if (arena) {
-        // start over
+      if (arena) { // start over
         container = arena.parentNode
         arena.innerHTML = ''
         const connectorArena = arena.nextSibling
@@ -2714,17 +2625,14 @@ window.addEventListener('load', () => {
         arena = document.createElement('div')
         arena.style.position = 'absolute' // TODO in CSS? (validator)
         container.appendChild(arena)
-        const connectorArena = document.createElementNS(
-          'http://www.w3.org/2000/svg',
-          'svg'
-        )
+        const connectorArena = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
         // svg.style.width = '100%' // Doesn't work in CSS
         // svg.style.height = '100%'
         connectorArena.style.position = 'absolute'
         connectorArena.style.pointerEvents = 'none'
         container.appendChild(connectorArena)
 
-        const mousemoveListener = function (e) {
+        const mousemoveListener = function(e) {
           const outerRect = container.getBoundingClientRect()
           if (rubberbandStarted) {
             e.stopPropagation()
@@ -2736,12 +2644,8 @@ window.addEventListener('load', () => {
             })
           } else if (dragStarted) {
             e.stopPropagation()
-            const x = pxToEm(
-              e.pageX - outerRect.left - window.scrollX - dragOffset.x
-            )
-            const y = pxToEm(
-              e.pageY - outerRect.top - window.scrollY - dragOffset.y
-            )
+            const x = pxToEm(e.pageX - outerRect.left - window.scrollX - dragOffset.x)
+            const y = pxToEm(e.pageY - outerRect.top - window.scrollY - dragOffset.y)
             sim.dragTo(x, y, draggedNode)
           }
         }
@@ -2750,7 +2654,7 @@ window.addEventListener('load', () => {
         arena.addEventListener('touchmove', mousemoveListener, {passive: true})
         */
 
-        const mouseupListener = function (e) {
+        const mouseupListener = function(e) {
           if (dragStarted) {
             e.stopPropagation()
             dragStarted = false
@@ -2767,7 +2671,7 @@ window.addEventListener('load', () => {
     const prepareNextStep = () => {
       getNextStep()
       if (currentStep === undefined) {
-        commonUI.done((doneAction) => {
+        commonUI.done(doneAction => {
           initState(tracerElement.state)
           setTimeout(() => {
             playSteps(doneAction)
@@ -2819,7 +2723,8 @@ window.addEventListener('load', () => {
         if (currentStep === undefined) done = true
         else {
           steps++
-          if (!['start', 'next', 'pause'].includes(currentStep.type)) maxscore++
+          if (!['start', 'next', 'pause'].includes(currentStep.type))
+            maxscore++
           else if (currentStep.type === 'start' && steps === 1) {
             startFound = true
             stateData = currentStep.state
@@ -2831,14 +2736,12 @@ window.addEventListener('load', () => {
       return { maxscore, startFound, stateData, steps }
     }
 
-    const initState = (from) => {
+    const initState = from => {
       tracerElement.state = {
         data: from === null || from === undefined ? undefined : from.data,
         lastStep: -1
       }
-      const { maxscore, startFound, stateData, steps } = countSteps(
-        tracerElement.state.data
-      )
+      const { maxscore, startFound, stateData, steps } = countSteps(tracerElement.state.data)
       tracerElement.state.data = stateData
       initArena()
       counters = {}
@@ -2858,39 +2761,29 @@ window.addEventListener('load', () => {
 
       let currentResult
       if (currentStep !== undefined) {
-        if (currentStep.value !== undefined) currentResult = currentStep.value
+        if (currentStep.value !== undefined)
+          currentResult = currentStep.value
         else {
           currentResult = currentStep.actual
           currentStep.actual = undefined
         }
       }
-      const nextStep = stepIter.next(currentResult)
-      if (
-        !nextStep.done &&
-        (typeof nextStep.value !== 'object' ||
-          !('type' in nextStep.value) ||
-          ![
-            'input',
-            'select',
-            'pause',
-            'next',
-            'start',
-            'connect',
-            'click'
-          ].includes(nextStep.value.type))
-      ) {
-        alert('Unexpected step ' + JSON.stringify(nextStep)) // eslint-disable-line
-        debugger // eslint-disable-line
+      const value = isAllDone()
+      const nextStep = value === undefined ? stepIter.next(currentResult) : { value, done: false }
+      if (!nextStep.done &&
+          (typeof nextStep.value !== 'object' ||
+           !('type' in nextStep.value) ||
+           !['input', 'select', 'pause', 'next', 'start', 'connect', 'click'].includes(nextStep.value.type))) {
+        alert('Unexpected step ' + JSON.stringify(nextStep))
       }
       if (currentStepIndex !== -1 && nextStep.value === 'start') {
-        alert('Unexpected start ' + JSON.stringify(nextStep)) // eslint-disable-line
-        debugger // eslint-disable-line
+        alert('Unexpected start ' + JSON.stringify(nextStep))
       }
       currentStep = nextStep.done ? undefined : nextStep.value
       currentStepIndex++
     }
 
-    const restoreState = (state) => {
+    const restoreState = state => {
       const maxscore = initState(state)
       if (state && (state.correct > 0 || state.errors > 0)) {
         // Play the first steps
@@ -2906,7 +2799,7 @@ window.addEventListener('load', () => {
     // Start of initElement
     const { steps } = countSteps(undefined)
 
-    commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
+    const commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
       ...config,
       interactive: true,
       retainMarkers: [], // TODO
@@ -2929,7 +2822,7 @@ window.addEventListener('load', () => {
   if ('SPLICE' in window) {
     if (!('horstmann_config' in window)) window.horstmann_config = {}
     window.horstmann_config.retrieve_state = (element, callback) => {
-      window.SPLICE.getState(element.id, (state) => callback(element, state))
+      window.SPLICE.getState(element.id, state => callback(element, state))
     }
     window.horstmann_config.score_change_listener = (element, state, score) => {
       window.SPLICE.reportScoreAndState(element.id, score, state)
