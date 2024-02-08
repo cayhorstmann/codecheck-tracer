@@ -2179,7 +2179,7 @@ window.addEventListener('load', () => {
             end: (val, values) => {
               const items = values.filter(value => value.$svg === val)
               items.forEach(item => {
-                if (item?.color !== undefined) run(item) // TODO: make it so run(item) only has item.color = 'pink'
+                if (item?.color !== undefined) run(item)
               })
             }
           }
@@ -2189,7 +2189,7 @@ window.addEventListener('load', () => {
             end: (val, values) => {
               const items = values.filter(value => value.$element === val)
               items.forEach(item => {
-                if (item?.color !== undefined) run(item) // TODO: make it so run(item) only has item.color = 'pink'
+                if (item?.color !== undefined) run(item)
               })
             }
           }
