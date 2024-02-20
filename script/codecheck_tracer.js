@@ -1484,7 +1484,6 @@ class GraphBase {
         const from = e.$from.$element
         const to = e.$to.$element
         sim.addConnector(from, to, (f, tb) => {
-          // console.log('draw', e)
           e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
           e.$svg.style.pointerEvents = 'auto'
           sim.selectable(e.$svg, 'edge', e)
@@ -1857,7 +1856,7 @@ window.addEventListener('load', () => {
 
         element.classList.add('hc-good')
         element.classList.add('hc-selected')
-        currentStep.elements.unshift(currentStep.elements.splice(currentStep.elements.indexOf(element), 1))
+        currentStep.elements.unshift(...currentStep.elements.splice(currentStep.elements.indexOf(element), 1))
         currentStepStarted = false
         stepCompleted(true)
         setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
@@ -2123,7 +2122,6 @@ window.addEventListener('load', () => {
             description: `Selecting ${value.$valueOf().$name}`
           }
         } else if (value instanceof GraphEdge) {
-          console.log('ask GraphEdge', value)
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
@@ -2606,7 +2604,7 @@ window.addEventListener('load', () => {
       if (currentStep?.func !== undefined) {
         const element = currentStep.elements.shift()
         if (element !== undefined) {
-          currentStep.func.end(element[0], currentStep.func.vals)
+          currentStep.func.end(element, currentStep.func.vals)
         }
         if (currentStep?.elements?.length > 0) {
           return currentStep
