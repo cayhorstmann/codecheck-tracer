@@ -1735,8 +1735,6 @@ window.addEventListener('load', () => {
     let draggedNode
     let dragOffset
 
-    let func
-
     const nodeResizeObserver = new ResizeObserver(entries => {
       // Recompute the connectors
       const connectorArena = arena.nextSibling
@@ -1940,7 +1938,7 @@ window.addEventListener('load', () => {
         if ('done' in currentStep) currentStep.done(actual)
         currentStep.actual = actual
         tracerElement.state.lastStep = currentStepIndex
-        commonUI.correct(tracerElement.state, { parital: (currentStep?.elements.length > 0 || func === undefined) })
+        commonUI.correct(tracerElement.state, { parital: (currentStep?.elements.length > 0 || currentStep?.func === undefined) })
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2153,7 +2151,7 @@ window.addEventListener('load', () => {
         }
       },
 
-      askAll: (vals, prompt, secondary, run) => {
+      askAll: (run, vals, prompt, secondary) => {
         const values = Array.isArray(vals) ? vals : [vals]
         const tests = {
           undefined: values.map((test) => test === undefined || horstmann_common.isScalar(test)),
@@ -2207,18 +2205,18 @@ window.addEventListener('load', () => {
           }
         } else if (!tests.GraphEdge.includes(false)) {
           tabindex(arena, 'selectable-edge', 0)
-          func = {
-            vals,
-            end: (val, values) => {
-              const items = values.filter(value => value.$svg === val)
-              items.forEach(item => run(item))
-            }
-          }
           return {
             type: 'select',
             elements: values
               .map((value) => value.$svg),
             value: values[0],
+            func: {
+              vals,
+              end: (val, values) => {
+                const items = values.filter(value => value.$svg === val)
+                items.forEach(item => run(item))
+              }
+            },
             prompt: prompt ?? 'Select the edge.',
             secondary,
             done: () => tabindex(arena, 'selectable-edge', -1),
@@ -2226,17 +2224,17 @@ window.addEventListener('load', () => {
           }
         } else if (!tests.Node.includes(false)) {
           tabindex(arena, 'selectable-node', 0)
-          func = {
-            vals,
-            end: (val, values) => {
-              const items = values.filter(value => value.$element === val)
-              items.forEach(item => run(item))
-            }
-          }
           return {
             type: 'select',
             elements: values.map((value) => value.$element),
             value: values[0],
+            func: {
+              vals,
+              end: (val, values) => {
+                const items = values.filter(value => value.$element === val)
+                items.forEach(item => run(item))
+              }
+            },
             prompt: prompt ?? 'Select the target.',
             secondary,
             done: () => tabindex(arena, 'selectable-node', -1),
@@ -2606,16 +2604,16 @@ window.addEventListener('load', () => {
     }
 
     const isAllDone = () => {
-      if (func !== undefined) {
+      if (currentStep?.func !== undefined) {
         const element = currentStep.elements.shift()
-        if (func !== undefined && element !== undefined) {
-          func.end(element[0], func.vals)
+        if (element !== undefined) {
+          currentStep.func.end(element[0], currentStep.func.vals)
         }
         if (currentStep?.elements?.length > 0) {
           return currentStep
         }
       }
-      func = undefined
+      delete currentStep?.func
     }
 
     // Plays the remaining steps with a delay
