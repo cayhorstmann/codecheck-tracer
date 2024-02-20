@@ -1363,7 +1363,7 @@ class GraphBase {
   }
 
   adjacent(v) {
-    return v.$outgoing.map(e => e.$to)
+    return v.$outgoing.map(e => e.$to === v ? e.$from : e.$to)
   }
 
   incident(v) {
@@ -1940,7 +1940,7 @@ window.addEventListener('load', () => {
         if ('done' in currentStep) currentStep.done(actual)
         currentStep.actual = actual
         tracerElement.state.lastStep = currentStepIndex
-        commonUI.correct(tracerElement.state)
+        commonUI.correct(tracerElement.state, { parital: (currentStep?.elements.length > 0 || func === undefined) })
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2164,23 +2164,21 @@ window.addEventListener('load', () => {
       },
 
       askAll: (vals, prompt, secondary, run) => {
-        const items = Array.isArray(vals) ? vals : [vals]
+        const values = Array.isArray(vals) ? vals : [vals]
         const tests = [
-          items.map((test) => test === undefined || horstmann_common.isScalar(test)),
-          items.map((test) => test instanceof Null),
-          items.map((test) => test instanceof Addr),
-          items.map((test) => test instanceof Ref),
-          items.map((test) => test instanceof GraphEdge),
-          items.map((test) => test instanceof Node && test.$toplevel)
+          values.map((test) => test === undefined || horstmann_common.isScalar(test)),
+          values.map((test) => test instanceof Null),
+          values.map((test) => test instanceof Addr),
+          values.map((test) => test instanceof Ref),
+          values.map((test) => test instanceof GraphEdge),
+          values.map((test) => test instanceof Node && test.$toplevel)
         ]
         if (!tests[4].includes(false)) {
           func = {
             vals,
             end: (val, values) => {
               const items = values.filter(value => value.$svg === val)
-              items.forEach(item => {
-                if (item?.color !== undefined) run(item)
-              })
+              items.forEach(item => run(item))
             }
           }
         } else if (!tests[5].includes(false)) {
@@ -2188,13 +2186,80 @@ window.addEventListener('load', () => {
             vals,
             end: (val, values) => {
               const items = values.filter(value => value.$element === val)
-              items.forEach(item => {
-                if (item?.color !== undefined) run(item)
-              })
+              items.forEach(item => run(item))
             }
           }
         }
-        return sim.ask(vals, prompt, secondary)
+        if (tests[0].includes(true)) {
+          return {
+            type: 'input',
+            select: true,
+            value: values[0],
+            prompt: prompt ?? _('od_enter_value'),
+            secondary,
+            description: `The new value is ${values[0]}`
+          }
+        } else if (!tests[1].includes(false)) {
+          tabindex(arena, 'selectable-field', 0)
+          return {
+            type: 'select',
+            elements: values.map((value) => value.$valueContainer),
+            value: values[0],
+            prompt: prompt ?? 'Select the location of the null pointer',
+            secondary,
+            done: () => tabindex(arena, 'selectable-field', -1), // ???
+            description: 'TODO'
+          }
+        } else if (!tests[2].includes(false)) {
+          tabindex(arena, 'editable', 0)
+          return {
+            type: 'select',
+            elements: values.map((value) => value.deref().$valueContainer),
+            value: values[0],
+            prompt: prompt ?? 'Select the pointer target.',
+            secondary,
+            done: () => tabindex(arena, 'editable', -1),
+            description: 'TODO'
+          }
+        } else if (!tests[3].includes(false)) {
+          tabindex(arena, 'selectable-node', 0)
+          return {
+            type: 'select',
+            elements: values.map((value) => value.$element),
+            value: values[0],
+            prompt: prompt ?? 'Select the target.',
+            secondary,
+            done: () => tabindex(arena, 'selectable-node', -1),
+            description: `Selecting ${values[0].$valueOf().$name}`
+          }
+        } else if (!tests[4].includes(false)) {
+          tabindex(arena, 'selectable-edge', 0)
+          return {
+            type: 'select',
+            elements: values
+              .map((value) => value.$svg),
+            value: values[0],
+            prompt: prompt ?? 'Select the edge.',
+            secondary,
+            done: () => tabindex(arena, 'selectable-edge', -1),
+            description: `Selecting ${values[0].$name}`
+          }
+        } else if (!tests[5].includes(false)) {
+          tabindex(arena, 'selectable-node', 0)
+          return {
+            type: 'select',
+            elements: values.map((value) => value.$element),
+            value: values[0],
+            prompt: prompt ?? 'Select the target.',
+            secondary,
+            done: () => tabindex(arena, 'selectable-node', -1),
+            description: `Selecting ${values[0].$name}`
+          }
+        } else {
+          alert(`Cannot ask for ${values[0]}`)
+          debugger
+          return undefined
+        }
       },
 
       /**
