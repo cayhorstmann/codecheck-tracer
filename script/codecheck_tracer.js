@@ -2242,7 +2242,6 @@ window.addEventListener('load', () => {
           }
         } else {
           alert(`Cannot ask for ${values[0]}`)
-          debugger
           return undefined
         }
       },
