@@ -2815,7 +2815,7 @@ window.addEventListener('load', () => {
           currentStep.actual = undefined
         }
       }
-      const value = isAllDone()
+      const value = isAllDone() // TODO: Update the description of the step each time
       const nextStep = value === undefined ? stepIter.next(currentResult) : { value, done: false }
       if (!nextStep.done &&
           (typeof nextStep.value !== 'object' ||
