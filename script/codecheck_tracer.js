@@ -1843,8 +1843,11 @@ window.addEventListener('load', () => {
       if (element.classList.contains('selectable-edge') &&
           !(currentStep.value instanceof GraphEdge)) return
 
+      if (currentStep.elements.indexOf(element) === -1 && currentStep.allElements.indexOf(element) >= 0) return
+
       if (currentStepStarted) return
       currentStepStarted = true
+
       const good = (currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0) || (currentStep.elements === undefined && currentStep.value === value)
       if (good) {
         // Remove old selection so that it doesn't interfere with
@@ -1957,7 +1960,6 @@ window.addEventListener('load', () => {
     let random = mulberry32((Math.random() * 4294967296) >>> 0)
 
     const sim = { // The object that is passed to the algorithm
-      blank: () => {},
       // Utility functions
       randSeed: seed => {
         if (seed === undefined) seed = Math.random()
@@ -2152,61 +2154,15 @@ window.addEventListener('load', () => {
       askAll: (run, vals, prompt, secondary) => {
         const values = Array.isArray(vals) ? vals : [vals]
         const tests = {
-          undefined: values.map((test) => test === undefined || horstmann_common.isScalar(test)),
-          Null: values.map((test) => test instanceof Null),
-          Addr: values.map((test) => test instanceof Addr),
-          Ref: values.map((test) => test instanceof Ref),
           GraphEdge: values.map((test) => test instanceof GraphEdge),
           Node: values.map((test) => (test instanceof Node && test.$toplevel))
         }
-        if (tests.undefined.includes(true)) {
-          return {
-            type: 'input',
-            select: true,
-            value: values[0],
-            prompt: prompt ?? _('od_enter_value'),
-            secondary,
-            description: `The new value is ${values[0]}`
-          }
-        } else if (!tests.Null.includes(false)) {
-          tabindex(arena, 'selectable-field', 0)
-          return {
-            type: 'select',
-            elements: values.map((value) => value.$valueContainer),
-            value: values[0],
-            prompt: prompt ?? 'Select the location of the null pointer',
-            secondary,
-            done: () => tabindex(arena, 'selectable-field', -1), // ???
-            description: 'TODO'
-          }
-        } else if (!tests.Addr.includes(false)) {
-          tabindex(arena, 'editable', 0)
-          return {
-            type: 'select',
-            elements: values.map((value) => value.deref().$valueContainer),
-            value: values[0],
-            prompt: prompt ?? 'Select the pointer target.',
-            secondary,
-            done: () => tabindex(arena, 'editable', -1),
-            description: 'TODO'
-          }
-        } else if (!tests.Ref.includes(false)) {
-          tabindex(arena, 'selectable-node', 0)
-          return {
-            type: 'select',
-            elements: values.map((value) => value.$element),
-            value: values[0],
-            prompt: prompt ?? 'Select the target.',
-            secondary,
-            done: () => tabindex(arena, 'selectable-node', -1),
-            description: `Selecting ${values[0].$valueOf().$name}`
-          }
-        } else if (!tests.GraphEdge.includes(false)) {
+        if (!tests.GraphEdge.includes(false)) {
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
-            elements: values
-              .map((value) => value.$svg),
+            elements: values.map((value) => value.$svg),
+            allElements: values.map((value) => value.$svg),
             value: values[0],
             func: {
               vals,
@@ -2225,6 +2181,7 @@ window.addEventListener('load', () => {
           return {
             type: 'select',
             elements: values.map((value) => value.$element),
+            allElements: values.map((value) => value.$element),
             value: values[0],
             func: {
               vals,
