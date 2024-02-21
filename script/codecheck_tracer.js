@@ -1940,7 +1940,7 @@ window.addEventListener('load', () => {
         if ('done' in currentStep) currentStep.done(actual)
         currentStep.actual = actual
         tracerElement.state.lastStep = currentStepIndex
-        commonUI.correct(tracerElement.state, { parital: (currentStep?.elements.length > 0 || currentStep?.func === undefined) })
+        commonUI.correct(tracerElement.state, { parital: (currentStep?.elements.length > 0 || currentStep?.clicked === undefined) })
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2127,7 +2127,10 @@ window.addEventListener('load', () => {
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
-            elements: undefined, // Can't use SVG because they move
+            /* I think I might have fixed the issue with the SVG.
+            In the dragTo function, I chack if the SVG's being moved are in currentStep.elements
+            Then, if they are, I replace them with the new SVG */
+            elements: [value.$svg], // Can't use SVG because they move
             value,
             prompt: prompt ?? 'Select the edge.',
             secondary,
@@ -2164,12 +2167,10 @@ window.addEventListener('load', () => {
             elements: values.map((value) => value.$svg),
             allElements: values.map((value) => value.$svg),
             value: values[0],
-            func: {
-              vals,
-              end: (val, values) => {
-                const items = values.filter(value => value.$svg === val)
-                items.forEach(item => run(item))
-              }
+            vals,
+            clicked: (val, values) => {
+              const items = values.filter(value => value.$svg === val)
+              items.forEach(item => run(item))
             },
             prompt: prompt ?? 'Select the edge.',
             secondary,
@@ -2183,12 +2184,10 @@ window.addEventListener('load', () => {
             elements: values.map((value) => value.$element),
             allElements: values.map((value) => value.$element),
             value: values[0],
-            func: {
-              vals,
-              end: (val, values) => {
-                const items = values.filter(value => value.$element === val)
-                items.forEach(item => run(item))
-              }
+            vals,
+            clicked: (val, values) => {
+              const items = values.filter(value => value.$element === val)
+              items.forEach(item => run(item))
             },
             prompt: prompt ?? 'Select the target.',
             secondary,
@@ -2393,9 +2392,11 @@ window.addEventListener('load', () => {
         const tos = connectorsFrom.get(from)
         if (tos !== undefined) {
           for (const [to, data] of tos.entries()) {
-            data.svg.remove()
             const svg = data.draw(from, getBounds(to))
             connectorArena.appendChild(svg)
+            if (![-1, undefined].includes(currentStep?.elements?.indexOf(data.svg))) currentStep.elements[currentStep.elements.indexOf(data.svg)] = svg // Update the SVG value is elements
+            if (![-1, undefined].includes(currentStep?.allElements?.indexOf(data.svg))) currentStep.allElements[currentStep.allElements.indexOf(data.svg)] = svg // Update the SVG value in allElements
+            data.svg.remove()
             tos.set(to, { ...data, svg })
             center(data.element, from, to)
           }
@@ -2406,9 +2407,11 @@ window.addEventListener('load', () => {
           for (const from of froms) {
             const tos = connectorsFrom.get(from)
             const data = tos.get(to)
-            data.svg.remove()
             const svg = data.draw(from, getBounds(to))
             connectorArena.appendChild(svg)
+            if (![-1, undefined].includes(currentStep?.elements?.indexOf(data.svg))) currentStep.elements[currentStep.elements.indexOf(data.svg)] = svg // Update the SVG value is elements
+            if (![-1, undefined].includes(currentStep?.allElements?.indexOf(data.svg))) currentStep.allElements[currentStep.allElements.indexOf(data.svg)] = svg // Update the SVG value in allElements
+            data.svg.remove()
             tos.set(to, { ...data, svg })
             center(data.element, from, to)
           }
@@ -2558,16 +2561,18 @@ window.addEventListener('load', () => {
     }
 
     const isAllDone = () => {
-      if (currentStep?.func !== undefined) {
+      if (currentStep?.clicked !== undefined) {
         const element = currentStep.elements.shift()
         if (element !== undefined) {
-          currentStep.func.end(element, currentStep.func.vals)
+          currentStep.clicked(element, currentStep.vals)
         }
         if (currentStep?.elements?.length > 0) {
+          const value = currentStep.vals[currentStep.allElements.indexOf(element) + 1]
+          currentStep.description = `Selecting ${value?.$name}`
           return currentStep
         }
       }
-      delete currentStep?.func
+      delete currentStep?.clicked
     }
 
     // Plays the remaining steps with a delay
