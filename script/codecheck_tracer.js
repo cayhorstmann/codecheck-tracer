@@ -50,6 +50,58 @@ use sim.eq.
 Pointer: An arrow from the valueContainer of a path to either a top-level node or
 the valueContainer of another path
 
+
+Sequence of actions:
+
+addExercise: pushes generator function, optional config
+
+'load' event handler:
+- calls initElement for each exercise
+-- calls countSteps: (to find out whether start button, instructions need to be shown)
+--- calls the algo generator function, and then repeatedly the algo iterator (in getNextStep)
+-- calls horstmann_common.uiInit
+--- calls initUI
+--- returns the commonUI object
+-- calls commonUI.restore
+--- registers callback, or calls doRestore(null) directly
+
+At this point, nothing in the exercise has been painted yet
+
+Callback from state restoration, or if no state retrieval mechanism, directly drom doRestore(null)
+- calls restoreState
+-- calls initState
+--- calls countSteps (to get maxcount for this state)
+--- calls initArena
+--- calls the algo generator function to get the algo iterator
+--- if start button, getNextStep() (to run the code prior to the start button)
+- if no state restored, showStart
+-- if hideStart:
+--- startButtonAction (same as callback from Start button, see below)
+
+Callback from Start button:
+- calls startAction passed to horstmann_common.uiInit, i.e. prepareNextStep
+-- calls getNextStep, which calls the generator function
+
+Callback from Start over button:
+- calls doRestore(null)
+-- calls restoreState (as above)
+--- calls showStart
+
+Callback from click on node or edge:
+- selected
+-- stepCompleted
+--- prepareNextStep
+---- getNextStep
+
+Callback from Show next step button:
+- doStep
+-- prepareNextStep
+
+Callback from Play button:
+- initState
+- loops through getNextStep, doStep with delay
+
+
 */
 
 import { horstmann_common, _ } from './horstmann_common.mjs'
@@ -157,7 +209,6 @@ const getBounds = e => {
     outer.appendChild(e)
     const result = { x: 0, y: 0, width: pxToEm(e.scrollWidth), height: 0 }
     outer.removeChild(e)
-    console.log(e, 'not in arena', result)
     return result
   }
   const outerRect = outer.getBoundingClientRect()
@@ -400,7 +451,7 @@ export class Code {
       const line = document.createElement('span')
       line.setAttribute('role', 'radio')
       line.innerHTML = this.lines[i]
-      // if (this.isSelectable(this.lines[i]))  // TODO XXX
+      // if (this.isSelectable(this.lines[i]))  // TODO
       sim.selectable(line, 'line')
 
       this.$element.appendChild(line)
@@ -742,7 +793,7 @@ class TableNode extends NamedValuesNode {
   $attach(sim) {
     this.$element = document.createElement('div')
     super.$attach(sim)
-    sim.selectable(this.$element, 'node')
+    sim.selectable(this.$element, 'node', this)
     sim.connectionTarget(this.$element)
     for (const valueElement of this.$element.getElementsByClassName('value')) {
       const fieldValueSpan = valueElement.firstChild
@@ -1363,7 +1414,7 @@ class GraphBase {
   }
 
   adjacent(v) {
-    return v.$outgoing.map(e => e.$to)
+    return v.$outgoing.map(e => e.$to === v ? e.$from : e.$to)
   }
 
   incident(v) {
@@ -1484,7 +1535,6 @@ class GraphBase {
         const from = e.$from.$element
         const to = e.$to.$element
         sim.addConnector(from, to, (f, tb) => {
-          console.log('draw', e)
           e.$svg = drawArrow(getBounds(f), tb, e.$color, this.$directed)
           e.$svg.style.pointerEvents = 'auto'
           sim.selectable(e.$svg, 'edge', e)
@@ -1638,7 +1688,7 @@ export class BinaryTreeNode extends Node {
     this.$element.appendChild(rightChild)
 
     sim.editable(valueContainer)
-    sim.selectable(this.$element, 'node')
+    sim.selectable(this.$element, 'node', this)
     sim.selectable(leftChild, 'field') // for Null
     sim.selectable(rightChild, 'field') // for Null
     sim.connectionSource(leftChild, BinaryTreeNode.drawConnector)
@@ -1710,7 +1760,6 @@ export class BinaryTreeNode extends Node {
 window.addEventListener('load', () => {
   const PLAY_STEP_DELAY = 1000
   const PAUSE_DELAY = 1000
-  const SHOW_MARKER_DELAY = 1000
   // const REMOVE_X = '✘'
 
   const initElement = (tracerElement, { algo, config }) => {
@@ -1837,35 +1886,63 @@ window.addEventListener('load', () => {
     const selected = (element, value) => { // value can be undefined
       if (currentStep === undefined || currentStep.type !== 'select' || element.classList.contains('hc-bad')) return
       // Ignore selections of the wrong type
-      if (element.classList.contains('selectable-node') &&
-          !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
-      if (element.classList.contains('selectable-field') &&
-          !(currentStep.value instanceof Null || (currentStep.value instanceof Node && !currentStep.value.$toplevel))) return
-      if (element.classList.contains('selectable-edge') &&
-          !(currentStep.value instanceof GraphEdge)) return
+      if ('alreadySelected' in currentStep) { // askAll
+        if (element.classList.contains('selectable-node') &&
+            !currentStep.values.some(v => v instanceof Node)) return
+        if (element.classList.contains('selectable-edge') &&
+            !currentStep.values.some(v => v instanceof GraphEdge)) return
+        if (currentStep.alreadySelected.includes(value)) return
+      } else {
+        if (element.classList.contains('selectable-node') &&
+            !(currentStep.value instanceof Ref || currentStep.value instanceof Node)) return
+        if (element.classList.contains('selectable-field') &&
+            !(currentStep.value instanceof Null || (currentStep.value instanceof Node && !currentStep.value.$toplevel))) return
+        if (element.classList.contains('selectable-edge') &&
+            !(currentStep.value instanceof GraphEdge)) return
+      }
 
       if (currentStepStarted) return
       currentStepStarted = true
-      const good = (currentStep.elements !== undefined && currentStep.elements.indexOf(element) >= 0) || (currentStep.elements === undefined && currentStep.value === value)
-      if (good) {
-        // Remove old selection so that it doesn't interfere with
-        // hc-good marking of new selection
-        const items = arena.getElementsByClassName('hc-selected')
-        for (let i = items.length - 1; i >= 0; i--) {
-          items[i].classList.remove('hc-selected')
-        }
 
+      let good
+      if ('alreadySelected' in currentStep) { // askAll
+        good = currentStep.values.includes(value)
+        if (good) {
+          currentStep.alreadySelected.push(value)
+        }
+      } else { // single selection
+        good = (currentStep.elements !== undefined && currentStep.elements.includes(element)) || (currentStep.elements === undefined && currentStep.value === value)
+      }
+      if (good) {
         element.classList.add('hc-good')
-        element.classList.add('hc-selected')
         currentStepStarted = false
         stepCompleted(true)
-        setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
       } else {
         element.classList.add('hc-bad')
         currentStepStarted = false
         stepCompleted(false)
-        setTimeout(() => { element.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
       }
+    }
+
+    const match = (inputText) => {
+      // IMPORTANT Use value, not inputText, because inputText is
+      // always a string. You want to give numbers a chance. Consider
+      // vars.n = 1
+      // vars.n = yield sim.ask(vars.n + 1)
+      // vars.n = yield sim.ask(vars.n + 1)
+
+      if ('predicate' in currentStep) {
+        if (currentStep.predicate(inputText)) {
+          return typeof currentStep.value === 'number' ? parseFloat(inputText) : inputText
+        }
+      } else if ('values' in currentStep) {
+        for (const v of currentStep.values) {
+          if (horstmann_common.matches(inputText, v)) return v
+        }
+      } else if ('value' in currentStep) {
+        if (horstmann_common.matches(inputText, currentStep.value)) return currentStep.value
+      }
+      return undefined
     }
 
     const editStarted = (element) => {
@@ -1877,22 +1954,23 @@ window.addEventListener('load', () => {
           return
         } else {
           commonUI.instruction(null, {
-            removeBadMarkers: true, // TODO: Really?
             secondary: _('od_enter_value')
           })
         }
       }
       commonUI.inputOver(element, (inputText, target) => {
-        const answer = currentStep.value
-        if (answer === undefined) {
+        const inputTextMatch = match(inputText)
+        if (currentStep.value === undefined) {
           stepCompleted(true, inputText)
-        } else if (horstmann_common.matches(inputText, answer)) {
+        } else if (inputTextMatch !== undefined) {
           if (element !== undefined) {
             element.classList.add('hc-good')
-            setTimeout(() => { element.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
           }
-          stepCompleted(true, inputText)
+          stepCompleted(true, inputTextMatch)
         } else {
+          if (element !== undefined) {
+            element.classList.add('hc-bad')
+          }
           stepCompleted(false)
         }
       })
@@ -1934,10 +2012,14 @@ window.addEventListener('load', () => {
 
     const stepCompleted = (success, actual) => {
       if (success) {
-        if ('done' in currentStep) currentStep.done(actual)
-        currentStep.actual = actual
-        tracerElement.state.lastStep = currentStepIndex
-        commonUI.correct(tracerElement.state)
+        if ('alreadySelected' in currentStep && currentStep.alreadySelected < currentStep.values)
+          commonUI.correct(null) // don't save partial state
+        else {
+          if ('done' in currentStep) currentStep.done(actual)
+          currentStep.actual = actual
+          tracerElement.state.lastStep = currentStepIndex
+          commonUI.correct(tracerElement.state)
+        }
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2076,7 +2158,52 @@ window.addEventListener('load', () => {
         }
       },
 
-      // TODO: Eliminate elements and always pass value to selected
+      // TODO: Also makes sense for selectable
+      askIf: (predicate, sampleValue, prompt, secondary) => {
+        return {
+          type: 'input',
+          select: true,
+          predicate,
+          value: sampleValue,
+          prompt: prompt ?? _('od_enter_value'),
+          secondary,
+          description: `The new value is ${sampleValue}`
+        }
+      },
+
+      // values: array of scalars or regex, initial element is preferred value
+      // TODO: Also makes sense for selectable
+      askAny: (values, prompt, secondary) => {
+        return {
+          type: 'input',
+          select: true,
+          values,
+          value: values[0],
+          prompt: prompt ?? _('od_enter_value'),
+          secondary,
+          description: `The new value is ${values[0]}`
+        }
+      },
+
+      askAll: (values, prompt, secondary) => {
+        if (values.some(v => v instanceof Node && v.$toplevel))
+          tabindex(arena, 'selectable-node', 0)
+        if (values.some(v => v instanceof GraphEdge))
+          tabindex(arena, 'selectable-edge', 0)
+        return {
+          type: 'select',
+          values,
+          alreadySelected: [],
+          prompt: prompt ?? 'Select the target.',
+          secondary,
+          done: () => {
+            tabindex(arena, 'selectable-node', -1)
+            tabindex(arena, 'selectable-edge', -1)
+          },
+          description: `Selecting ${values.map(v => v.$name)}`
+        }
+      },
+
       ask: (value, prompt, secondary) => {
         if (value === undefined || horstmann_common.isScalar(value)) {
           return {
@@ -2121,7 +2248,6 @@ window.addEventListener('load', () => {
             description: `Selecting ${value.$valueOf().$name}`
           }
         } else if (value instanceof GraphEdge) {
-          console.log('ask GraphEdge', value)
           tabindex(arena, 'selectable-edge', 0)
           return {
             type: 'select',
@@ -2136,7 +2262,7 @@ window.addEventListener('load', () => {
           tabindex(arena, 'selectable-node', 0)
           return {
             type: 'select',
-            elements: [value.$element],
+            // elements: [value.$element],
             value,
             prompt: prompt ?? 'Select the target.',
             secondary,
@@ -2253,12 +2379,10 @@ window.addEventListener('load', () => {
               button.classList.add('hc-good')
               currentStepStarted = false
               stepCompleted(true)
-              setTimeout(() => { button.classList.remove('hc-good') }, SHOW_MARKER_DELAY)
             } else {
               button.classList.add('hc-bad')
               currentStepStarted = false
               stepCompleted(false)
-              setTimeout(() => { button.classList.remove('hc-bad') }, SHOW_MARKER_DELAY)
             }
           })
         }
@@ -2276,7 +2400,7 @@ window.addEventListener('load', () => {
       */
       renderValue: (path) => {
         if (typeof path === 'object' && 'type' in path) {
-          console.log(`Right hand side is ${JSON.stringify(path)}. Forgotten yield?`)
+          console.warn(`Right hand side is ${JSON.stringify(path)}. Forgotten yield?`)
         }
         const valueContainer = path.$valueContainer
         sim.removeConnectorsFrom(valueContainer)
@@ -2522,10 +2646,27 @@ window.addEventListener('load', () => {
       Does the current step non-interactively (in play, show next steps)
     */
     const doStep = () => {
-      if (currentStep.type === 'select' && currentStep.elements !== undefined) {
-        const element = currentStep.elements[0]
-        element.classList.add('hc-good')
-        setTimeout(() => { element.classList.remove('hc-good') }, PLAY_STEP_DELAY)
+      if (currentStep.type === 'select') {
+        if ('alreadySelected' in currentStep) { // askAll
+          // Find element that is not already selected
+          let found = false
+          let i = 0
+          while (!found && i < currentStep.values.length) {
+            if (!currentStep.alreadySelected.includes(currentStep.values[i]))
+              found = true
+            else
+              i++
+          }
+          const selected = currentStep.values[i]
+          currentStep.alreadySelected.push(selected)
+          if ('$svg' in selected) // GraphEdge have both $svg and $element
+            selected.$svg.classList.add('hc-selected')
+          else
+            selected.$element.classList.add('hc-selected')
+        } else if ('elements' in currentStep) {
+          const element = currentStep.elements[0]
+          element.classList.add('hc-good')
+        }
       }
       if ('done' in currentStep)
         currentStep.done()
@@ -2656,23 +2797,28 @@ window.addEventListener('load', () => {
       let done = false
       let maxscore = 0
       let startFound = false
-      let stateData
+      let startState
       while (!done) {
         getNextStep()
         if (currentStep === undefined) done = true
         else {
-          steps++
+          if ('alreadySelected' in currentStep) {
+            currentStep.alreadySelected = currentStep.values
+            steps += currentStep.values.length
+          } else {
+            steps++
+          }
           if (!['start', 'next', 'pause'].includes(currentStep.type))
             maxscore++
           else if (currentStep.type === 'start' && steps === 1) {
             startFound = true
-            stateData = currentStep.state
+            startState = currentStep.state
           }
           if ('done' in currentStep) currentStep.done()
         }
       }
       sim.silent = false
-      return { maxscore, startFound, stateData, steps }
+      return { maxscore, startFound, startState, steps }
     }
 
     const initState = from => {
@@ -2680,33 +2826,37 @@ window.addEventListener('load', () => {
         data: from === null || from === undefined ? undefined : from.data,
         lastStep: -1
       }
-      const { maxscore, startFound, stateData, steps } = countSteps(tracerElement.state.data)
-      tracerElement.state.data = stateData
+      const algoData = countSteps(tracerElement.state.data)
+      tracerElement.state.data = algoData.startState
       initArena()
       counters = {}
       stepIter = algo(sim, tracerElement.state.data)
-      if (startFound || steps === 0) getNextStep()
+      if (algoData.startFound) getNextStep()
       currentStep = undefined
       currentStepIndex = -1
-      return maxscore
+      return algoData
     }
 
+    /*
+      Sends the current result back to the algo iterator and gets the next
+      step.
+    */
     const getNextStep = () => {
-      // IMPORTANT Use value, not actual, because actual is
-      // always a string. You want to give numbers a chance. Consider
-      // vars.n = 1
-      // vars.n = yield sim.ask(vars.n + 1)
-      // vars.n = yield sim.ask(vars.n + 1)
-
       let currentResult
       if (currentStep !== undefined) {
-        if (currentStep.value !== undefined)
-          currentResult = currentStep.value
-        else {
-          currentResult = currentStep.actual
-          currentStep.actual = undefined
+        if ('alreadySelected' in currentStep) {
+          if (currentStep.alreadySelected.length < currentStep.values.length)
+            return // Stay in current step
+          else
+            currentStep.alreadySelected = []
         }
+        if (currentStep.actual !== undefined)
+          currentResult = currentStep.actual
+        else
+          currentResult = currentStep.value
+        currentStep.actual = undefined
       }
+
       const nextStep = stepIter.next(currentResult)
       if (!nextStep.done &&
           (typeof nextStep.value !== 'object' ||
@@ -2722,7 +2872,7 @@ window.addEventListener('load', () => {
     }
 
     const restoreState = state => {
-      const maxscore = initState(state)
+      const algoData = initState(state)
       if (state && (state.correct > 0 || state.errors > 0)) {
         // Play the first steps
         while (currentStepIndex < state.lastStep) {
@@ -2731,17 +2881,13 @@ window.addEventListener('load', () => {
         }
         prepareNextStep() // Prepare the UI for the next step (or show Good Job!)
       }
-      return maxscore
+      return algoData
     }
-
-    // Start of initElement
-    const { steps } = countSteps(undefined)
 
     const commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
       ...config,
       interactive: true,
       retainMarkers: [], // TODO
-      hideStart: steps === 0
     })
     commonUI.restore(restoreState)
     tabindex(arena, 'selectable-line', 0)

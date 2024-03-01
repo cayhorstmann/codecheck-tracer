@@ -184,7 +184,7 @@ horstmann_common.matches = function(response, answer) {
     reString = '^(' + reString.substring(1, reString.length - 1) + ')$'
     return new RegExp(reString).test(str)
   }
-  
+
   if (Array.isArray(answer)) {
     for (let i = 0; i < answer.length; i++)
       if (horstmann_common.matches(response, answer[i])) return true;
@@ -270,14 +270,32 @@ horstmann_common.uiInit = function(element, startAction, config) {
   let isRestoring = false
 
   let inputField = undefined
-  let inputFieldAction = undefined
   let inputTarget = undefined
   let defaultInputTarget = undefined
 
+  function startButtonAction() {
+    if (interactive)
+      startTime = new Date().getTime() // TODO What if no start button
+    removeAllMarkers()
+    startButton.style.display = 'none'
+    buttons2.style.display = ''
+    showStartOver()
+
+    element.correct = 0
+    element.errors = 0
+    tries = 0
+    if (doneButton) doneButton.style.display = ''
+
+    startAction(element) 
+  }
+
   function showStart() {
     hideAll()
-    if (config.hideStart) {
+    if (config.hideInstructions) {
       instructions.style.display = 'none'
+    }
+    if (config.hideStart) {
+      startButtonAction() 
     } else {
       instruction1.innerHTML = _('Press start to begin.')
       startButton.style.display = ''
@@ -314,7 +332,16 @@ horstmann_common.uiInit = function(element, startAction, config) {
     isRestoring = true
     hideInput() 
     let oldErrors = state && state.errors ? state.errors : 0
-    let maxscore = restoreStateAction(state)
+    let algoData = restoreStateAction(state)
+    let maxscore
+    if (typeof algoData === 'object') {
+      maxscore = algoData.maxscore
+      config.hideInstructions = algoData.steps === 0
+      config.hideStart = !algoData.startFound
+    } else { // TODO: Legacy
+      maxscore = algoData
+    }
+    
     // restoreStateAction can reset correct, errors
     element.correct = state && state.correct ? state.correct : 0 
     element.errors = state && state.errors ? state.errors : 0 
@@ -380,27 +407,18 @@ horstmann_common.uiInit = function(element, startAction, config) {
     instruction2.innerHTML = instr2 || ''
   }
 
-  function removeMarkers(clazz, always) {
-    if (always || !(config && config.retainMarkers &&
-                    config.retainMarkers.indexOf(clazz) >= 0)) {
-      let root = config && config.markerRoot ? config.markerRoot : element // object diagram removes hc-selected from description
-      let items = root.getElementsByClassName(clazz)
-      for (let i = items.length - 1; i >= 0; i--)
-        items[i].classList.remove(clazz)
-      items = buttons2.getElementsByClassName(clazz)
-      for (let i = items.length - 1; i >= 0; i--)
-        items[i].classList.remove(clazz)
-    }
+  function removeMarkers(clazz) {
+    for (const e of document.querySelectorAll('.' + clazz))
+      e.classList.remove(clazz)
   }
   
   function makeButton(clazz, labelKey, action) {
     return horstmann_common.createButton(clazz, _(labelKey), action)
   }
 
-  function removeAllMarkers(always) {
-    removeMarkers('hc-good', always)
-    removeMarkers('hc-bad', always)
-    // removeMarkers('hc-selected', always)
+  function removeAllMarkers() {
+    setTimeout(() => removeMarkers('hc-good'), GOOD_MARKER_DELAY)
+    removeMarkers('hc-bad')
     instruction1.innerHTML = ''
     instruction2.innerHTML = ''
     warning.innerHTML = ''      
@@ -434,22 +452,8 @@ horstmann_common.uiInit = function(element, startAction, config) {
     warning.classList.add('hc-message')
     warning.classList.add('hc-retry')
     warning.setAttribute('aria-live', 'assertive')
-    
-    startButton = makeButton('hc-start', 'start_button', function(e) {
-      if (interactive)
-        startTime = new Date().getTime()
-      removeAllMarkers()
-      startButton.style.display = 'none'
-      buttons2.style.display = ''
-      showStartOver()
 
-      element.correct = 0
-      element.errors = 0
-      tries = 0
-      if (doneButton) doneButton.style.display = ''
-
-      startAction(element) 
-    })
+    startButton = makeButton('hc-start', 'start_button', startButtonAction)
     
     nextButton = makeButton('hc-step', 'next_button', function() {
       nextButton.style.display = 'none'
@@ -474,7 +478,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
       startOverButton.style.pointerEvents = 'none'
       if (playButtonAction)
         playButtonAction(function() {
-          removeAllMarkers(false /* always */)
+          removeAllMarkers()
           goodJob.innerHTML = _('The end')
           goodJob.style.display = ''
           buttons2.innerHTML = ''
@@ -511,10 +515,9 @@ horstmann_common.uiInit = function(element, startAction, config) {
     element.parentNode.insertBefore(uiElement, element)
 
     startOverButton = makeButton('hc-start', 'Start over', function() {
-      removeAllMarkers(true /* always */)
+      removeAllMarkers()
       buttons2.innerHTML = ''
       doRestore(null)
-      showStart()
     })
     instructions = document.createElement('div')     
     if (!(config && config.hideHeader))
@@ -576,6 +579,15 @@ horstmann_common.uiInit = function(element, startAction, config) {
   initUI()
 
   let commonUI = {
+    /*
+      restoreState: a function that receives the state, or null (!!!)
+      if no prior state, in which case a new problem instance
+      should be generated. The function returns the maxscore of the instance
+
+      When calling restore, the state is retrieved. restoreState is called
+      when the retrieved state becomes available, and when the Start Over button
+      is clicked.
+     */
     restore: function(restoreState) {
       restoreStateAction = restoreState
       if (interactive &&
@@ -590,7 +602,12 @@ horstmann_common.uiInit = function(element, startAction, config) {
     },
 
     /*
-      Shows an instruction. If nextAction is provided, a Next button
+      Shows an instruction.
+
+      instr: the instruction text
+      namedArgs
+      .secondary: the secondary instruction text
+      .nextAction: if provided, a Next button
       is displayed that calls nextAction when clicked. If that action
       returns a state, it is recorded.
 
@@ -599,35 +616,25 @@ horstmann_common.uiInit = function(element, startAction, config) {
       instruction is cleared if none is provided
     */
     instruction: function(instr, namedArgs) {
-      if (instr != null) removeAllMarkers(false /* always */)
+      if (instr != null) removeAllMarkers()
       setInstruction(instr, namedArgs && namedArgs.secondary)
       seeNextStepButton.style.display = 'none'
       if (doneButton) doneButton.style.display = ''
-      if (namedArgs && namedArgs.removeBadMarkers)
-        removeMarkers('hc-bad')
       if (namedArgs && namedArgs.nextAction) {
         nextButton.style.display = ''
         nextButton.focus()
         nextButtonAction = namedArgs.nextAction
       }
-      showStartOver() // in restore state, start button might have never be clicked        
-    },
-
-    warning: function(message) {
-      warning.innerHTML = message
+      showStartOver() // in restore state, start button might have never be clicked
     },
 
     /*
       Call when the user has successfully completed a step.
+      state: the state to be saved, or null to skip state saving
+      namedArgs
+      .afterAction: invoked (without args) after a short delay
     */
     correct: function(state, namedArgs) {
-      let partial = namedArgs && namedArgs.partial
-      if (!partial) {
-        removeMarkers('hc-bad')
-        setTimeout(function() { // TODO: Animation https://codersblock.com/blog/the-surprising-things-that-css-can-animate/
-          removeMarkers('hc-good')
-        }, GOOD_MARKER_DELAY)
-      }
       hideInput()
       warning.innerHTML = ''
       seeNextStepButton.style.display = 'none'
@@ -644,6 +651,8 @@ horstmann_common.uiInit = function(element, startAction, config) {
       If the seeNextStep function is provided, a "Next" button
       is provided that invokes it. If that function returns a 
       new state, it is recorded.
+      If defined, namedArgs.afterAction is called (without args)
+      a short delay after recording the new state. 
     */
     error: function(state, seeNextStep, namedArgs) {
       if (inputField) inputField.classList.add('hc-bad')
@@ -680,12 +689,16 @@ horstmann_common.uiInit = function(element, startAction, config) {
     },
 
     /*
-      Show the input field over the target element (or the default location if target is null)
+      Show the input field
+      target: the HTML element over which to display the input field
+      If target is null, the input field is shown in a default location
+      action: invoked with the entered value and target when user hits Enter
+      or after timeout
 
       TODO: 
       Text area for multiline inputs
     */
-    inputOver: function(target, action, firstKey) {
+    inputOver: function(target, action) {
       if (!target) target = defaultInputTarget
 
       if (inputField === undefined) {
@@ -693,6 +706,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
         inputField.setAttribute('aria-labelledby', 'hc-instruction1')
         inputField.setAttribute('aria-describedby', 'hc-instruction2')
         inputField.addEventListener('keydown', function(e) {
+          inputField.classList.remove('hc-bad')
           e.stopPropagation()
           clearTimeout(inputField.inactivityTimeout)
           clearTimeout(inputField.placementTimeout)
@@ -702,19 +716,17 @@ horstmann_common.uiInit = function(element, startAction, config) {
             e.preventDefault()
             let value = inputField.value
             if (value.trim().length > 0) {
-              // console.log('inputFieldAction on tab or enter: ' + value)
-              inputFieldAction(value, inputTarget)
+              action(value, inputTarget)
             }
           } else {
             inputField.inactivityTimeout = setTimeout(function() {
               inputField.focus()
-              commonUI.warning(_('enter_press_inst'))
+              warning.innerHTML = _('enter_press_inst')
               inputField.inactivityTimeout = setTimeout(function() {
                 inputField.inactivityTimeout = undefined
                 let value = inputField.value
                 if (value.trim().length > 0) {
-                  // console.log('inputFieldAction on timeout: ' + value)
-                  inputFieldAction(value, inputTarget)
+                  action(value, inputTarget)
                 }
               }, EDIT_COMPLETE_TIMEOUT) 
             }, ENTER_MESSAGE_TIMEOUT)
@@ -732,7 +744,6 @@ horstmann_common.uiInit = function(element, startAction, config) {
         inputField.placementTimeout = undefined
       }
 
-      inputFieldAction = action
       if (inputTarget) {
         if (target === inputTarget)
           return
@@ -773,7 +784,6 @@ horstmann_common.uiInit = function(element, startAction, config) {
       inputField.focus() // iOS wants it in the same callback
       setTimeout(function() {
         inputField.focus()
-        if (firstKey) inputField.value = firstKey // Without delay, appears twice
       }, 100) // Desktop browsers want a delay
     },
 
@@ -796,7 +806,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
       Optionally displays a Play button that executes the given action.
     */
     done: function(playAction) {
-      removeAllMarkers(false /* always */) // Want to keep green exampletable
+      removeAllMarkers()
       goodJob.innerHTML = _(interactive ? 'Good job' : 'The end')
       goodJob.style.display = ''
       if (doneButton) doneButton.style.display = 'none'

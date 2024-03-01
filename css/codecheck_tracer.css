@@ -87,7 +87,7 @@ html, body { /* TODO Edgcomb 2022-08-01 */
     background: var(--yellowish-selected);
 }
 
-.codecheck_tracer .codelines .hc-good {
+.codecheck_tracer .codelines .hc-selected.hc-good {
   background-color: var(--greenish-success);
 }
 
@@ -382,4 +382,25 @@ html, body { /* TODO Edgcomb 2022-08-01 */
 
 .codecheck_tracer .value > span.hc-good {
   background-color: var(--greenish-success);
+}
+
+.codecheck_tracer .selectable-node.hc-good {
+  border: medium dotted;
+  border-color: var(--greenish-success);
+}
+
+.codecheck_tracer .selectable-node.hc-bad {
+  border: medium dotted;
+  border-color: var(--reddish-error);
+}
+
+.codecheck_tracer .selectable-edge.hc-good {
+  stroke-dasharray: 0.2,0.2;
+  /* TODO: Figure out how to change color */
+}
+
+.codecheck_tracer .selectable-edge.hc-bad {
+  stroke-dasharray: 0.2,0.2;
+  stroke-opacity: 30%;
+  /* TODO: Figure out how to change color */
 }
