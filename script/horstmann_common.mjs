@@ -421,7 +421,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
     removeMarkers('hc-bad')
     instruction1.innerHTML = ''
     instruction2.innerHTML = ''
-    warning.innerHTML = ''      
+    warning.innerHTML = ''
   }
 
   function initUI() {
@@ -479,9 +479,9 @@ horstmann_common.uiInit = function(element, startAction, config) {
       if (playButtonAction)
         playButtonAction(function() {
           removeAllMarkers()
+          buttons2.innerHTML = ''
           goodJob.innerHTML = _('The end')
           goodJob.style.display = ''
-          buttons2.innerHTML = ''
           playButton.style.pointerEvents = 'auto'
           startOverButton.style.pointerEvents = 'auto'
         })
@@ -616,7 +616,9 @@ horstmann_common.uiInit = function(element, startAction, config) {
       instruction is cleared if none is provided
     */
     instruction: function(instr, namedArgs) {
-      if (instr != null) removeAllMarkers()
+      if (instr != null) {
+        removeAllMarkers()
+      }
       setInstruction(instr, namedArgs && namedArgs.secondary)
       seeNextStepButton.style.display = 'none'
       if (doneButton) doneButton.style.display = ''
@@ -788,7 +790,9 @@ horstmann_common.uiInit = function(element, startAction, config) {
     },
 
     addButton: function(label, action) {
-      buttons2.appendChild(horstmann_common.createButton('hc-step', label, action))
+      const button = horstmann_common.createButton('hc-step', label, action)
+      buttons2.appendChild(button)
+      return button
     },
 
     // Used by rearrange after each drop
@@ -805,11 +809,13 @@ horstmann_common.uiInit = function(element, startAction, config) {
       Call when the user has successfully completed all steps.
       Optionally displays a Play button that executes the given action.
     */
-    done: function(playAction) {
+    done: function(playAction, goodJobMessage) {
       removeAllMarkers()
-      goodJob.innerHTML = _(interactive ? 'Good job' : 'The end')
+
+      goodJob.innerHTML = goodJobMessage || _(interactive ? 'Good job' : 'The end')
       goodJob.style.display = ''
       if (doneButton) doneButton.style.display = 'none'
+      buttons2.innerHTML = ''
       if (startTime !== undefined) {
         let timeSpent = new Date().getTime() - startTime
         timeSpent = Math.round(timeSpent / 1000)
@@ -817,7 +823,6 @@ horstmann_common.uiInit = function(element, startAction, config) {
           timeSpentDiv.innerHTML = ', ' + timeSpent + ' ' + _("seconds")
         startTime = undefined
       }
-      buttons2.innerHTML = ''
       showStartOver() // in restore state, start button might have never be clicked
       if (playAction) {
         playButton.style.display = ''

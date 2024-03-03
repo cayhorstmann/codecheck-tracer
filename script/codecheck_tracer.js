@@ -1779,10 +1779,14 @@ window.addEventListener('load', () => {
     // maps $valueContainer/$element of start to map of $valueContainer/$element of end to { svg, draw: function to redraw }
     let connectorsTo = new Map()
     // maps $valueContainer/$element of end to set of $valueContainer/$element of starts
+    const buttons = new Map()
+    // maps button labels to elements, for non-interactive click
 
     let dragStarted = false
     let draggedNode
     let dragOffset
+
+    let lastResult
 
     const nodeResizeObserver = new ResizeObserver(entries => {
       // Recompute the connectors
@@ -2020,6 +2024,7 @@ window.addEventListener('load', () => {
           tracerElement.state.lastStep = currentStepIndex
           commonUI.correct(tracerElement.state)
         }
+        lastResult = actual
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2150,7 +2155,8 @@ window.addEventListener('load', () => {
 
       click: (label, prompt, secondary) => {
         return {
-          type: 'click',
+          type: 'select',
+          elements: [buttons.get(label)],
           prompt: prompt ?? _('od_click_button'),
           secondary,
           value: label,
@@ -2371,20 +2377,8 @@ window.addEventListener('load', () => {
       addButtons: (...labels) => {
         if (sim.silent) return
         for (const label of labels) {
-          commonUI.addButton(label, (button) => {
-            if (currentStep === undefined || currentStep.type !== 'click' || button.classList.contains('hc-bad')) return
-            if (currentStepStarted) return
-            currentStepStarted = true
-            if (currentStep.value === button.innerHTML.toString()) {
-              button.classList.add('hc-good')
-              currentStepStarted = false
-              stepCompleted(true)
-            } else {
-              button.classList.add('hc-bad')
-              currentStepStarted = false
-              stepCompleted(false)
-            }
-          })
+          const button = commonUI.addButton(label, (button) => { selected(button, label) })
+          buttons.set(label, button)
         }
       },
 
@@ -2751,12 +2745,14 @@ window.addEventListener('load', () => {
     const prepareNextStep = () => {
       getNextStep()
       if (currentStep === undefined) {
+        if (currentStepIndex > 1) 
         commonUI.done(doneAction => {
           initState(tracerElement.state)
           setTimeout(() => {
             playSteps(doneAction)
           }, PLAY_STEP_DELAY)
         })
+        else commonUI.done(undefined, lastResult)
         return
       }
       const prompt = currentStep.prompt || ''
@@ -2842,7 +2838,6 @@ window.addEventListener('load', () => {
       step.
     */
     const getNextStep = () => {
-      let currentResult
       if (currentStep !== undefined) {
         if ('alreadySelected' in currentStep) {
           if (currentStep.alreadySelected.length < currentStep.values.length)
@@ -2850,18 +2845,15 @@ window.addEventListener('load', () => {
           else
             currentStep.alreadySelected = []
         }
-        if (currentStep.actual !== undefined)
-          currentResult = currentStep.actual
-        else
-          currentResult = currentStep.value
-        currentStep.actual = undefined
+        if (lastResult === undefined)
+          lastResult = currentStep.value
       }
 
-      const nextStep = stepIter.next(currentResult)
+      const nextStep = stepIter.next(lastResult)
       if (!nextStep.done &&
           (typeof nextStep.value !== 'object' ||
            !('type' in nextStep.value) ||
-           !['input', 'select', 'pause', 'next', 'start', 'connect', 'click'].includes(nextStep.value.type))) {
+           !['input', 'select', 'pause', 'next', 'start', 'connect'].includes(nextStep.value.type))) {
         alert('Unexpected step ' + JSON.stringify(nextStep))
       }
       if (currentStepIndex !== -1 && nextStep.value === 'start') {
@@ -2886,8 +2878,7 @@ window.addEventListener('load', () => {
 
     const commonUI = horstmann_common.uiInit(tracerElement, prepareNextStep, {
       ...config,
-      interactive: true,
-      retainMarkers: [], // TODO
+      interactive: true // TODO
     })
     commonUI.restore(restoreState)
     tabindex(arena, 'selectable-line', 0)
