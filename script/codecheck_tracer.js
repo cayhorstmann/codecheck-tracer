@@ -95,7 +95,7 @@ Callback from click on node or edge:
 
 Callback from Show next step button:
 - doStep
--- prepareNextStep
+- prepareNextStep (afterAction)
 
 Callback from Play button:
 - initState
@@ -1786,8 +1786,6 @@ window.addEventListener('load', () => {
     let draggedNode
     let dragOffset
 
-    let lastResult
-
     const nodeResizeObserver = new ResizeObserver(entries => {
       // Recompute the connectors
       const connectorArena = arena.nextSibling
@@ -1935,15 +1933,15 @@ window.addEventListener('load', () => {
       // vars.n = yield sim.ask(vars.n + 1)
       // vars.n = yield sim.ask(vars.n + 1)
 
-      if ('predicate' in currentStep) {
+      if (currentStep.predicate !== undefined) {
         if (currentStep.predicate(inputText)) {
           return typeof currentStep.value === 'number' ? parseFloat(inputText) : inputText
         }
-      } else if ('values' in currentStep) {
+      } else if (currentStep.values !== undefined) {
         for (const v of currentStep.values) {
           if (horstmann_common.matches(inputText, v)) return v
         }
-      } else if ('value' in currentStep) {
+      } else if (currentStep.value !== undefined) {
         if (horstmann_common.matches(inputText, currentStep.value)) return currentStep.value
       }
       return undefined
@@ -2020,11 +2018,10 @@ window.addEventListener('load', () => {
           commonUI.correct(null) // don't save partial state
         else {
           if ('done' in currentStep) currentStep.done(actual)
-          currentStep.actual = actual
           tracerElement.state.lastStep = currentStepIndex
           commonUI.correct(tracerElement.state)
         }
-        lastResult = actual
+        currentStep.actual = actual
         prepareNextStep()
       } else {
         commonUI.error(tracerElement.state, doStep, {
@@ -2746,14 +2743,13 @@ window.addEventListener('load', () => {
       getNextStep()
       if (currentStep === undefined) {
         if (currentStepIndex > 1) 
-        commonUI.done(doneAction => {
-          initState(tracerElement.state)
-          setTimeout(() => {
-            playSteps(doneAction)
-          }, PLAY_STEP_DELAY)
-        })
-        else commonUI.done(undefined, lastResult)
-        return
+          commonUI.done(doneAction => {
+            initState(tracerElement.state)
+            setTimeout(() => {
+              playSteps(doneAction)
+            }, PLAY_STEP_DELAY)
+          })
+        else commonUI.done()
       }
       const prompt = currentStep.prompt || ''
       if (currentStep.type === 'next') {
@@ -2838,15 +2834,15 @@ window.addEventListener('load', () => {
       step.
     */
     const getNextStep = () => {
+      let lastResult = undefined
       if (currentStep !== undefined) {
+        lastResult = currentStep.actual ?? currentStep.value
         if ('alreadySelected' in currentStep) {
           if (currentStep.alreadySelected.length < currentStep.values.length)
             return // Stay in current step
           else
             currentStep.alreadySelected = []
         }
-        if (lastResult === undefined)
-          lastResult = currentStep.value
       }
 
       const nextStep = stepIter.next(lastResult)

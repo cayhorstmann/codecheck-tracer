@@ -295,7 +295,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
       instructions.style.display = 'none'
     }
     if (config.hideStart) {
-      startButtonAction() 
+      startButtonAction()
     } else {
       instruction1.innerHTML = _('Press start to begin.')
       startButton.style.display = ''
@@ -782,11 +782,13 @@ horstmann_common.uiInit = function(element, startAction, config) {
       }, 1000)
       
       target.style.visibility = 'hidden'
+      if (!config.hideStart) { // With multiple elements without start, don't want the last one to grab focus
       // TODO: After the first time, focus doesn't work on iOS
-      inputField.focus() // iOS wants it in the same callback
-      setTimeout(function() {
-        inputField.focus()
-      }, 100) // Desktop browsers want a delay
+        inputField.focus() // iOS wants it in the same callback
+        setTimeout(function() {
+          inputField.focus()
+        }, 100) // Desktop browsers want a delay
+      }
     },
 
     addButton: function(label, action) {
