@@ -693,7 +693,7 @@ horstmann_common.uiInit = function(element, startAction, config) {
     /*
       Show the input field
       target: the HTML element over which to display the input field
-      If target is null, the input field is shown in a default location
+      iiiii   If target is null, the input field is shown in a default location
       action: invoked with the entered value and target when user hits Enter
       or after timeout
 

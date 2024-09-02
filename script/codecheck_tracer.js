@@ -1961,17 +1961,19 @@ window.addEventListener('load', () => {
         }
       }
       commonUI.inputOver(element, (inputText, target) => {
+        // TODO Why is sometimes element != target in this callback?
+        // I wanted to add hc-good/hc-bad to element, but it didn't work
         const inputTextMatch = match(inputText)
         if (currentStep.value === undefined) {
           stepCompleted(true, inputText)
         } else if (inputTextMatch !== undefined) {
-          if (element !== undefined) {
-            element.classList.add('hc-good')
+          if (target !== undefined) {
+            target.classList.add('hc-good')
           }
           stepCompleted(true, inputTextMatch)
         } else {
-          if (element !== undefined) {
-            element.classList.add('hc-bad')
+          if (target !== undefined) {
+            target.classList.add('hc-bad')
           }
           stepCompleted(false)
         }
